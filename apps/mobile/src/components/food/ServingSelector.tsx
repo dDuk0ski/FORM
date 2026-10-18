@@ -37,9 +37,7 @@ export function ServingSelector({ servings, selectedId, onSelect }: ServingSelec
               opacity: pressed ? 0.8 : 1,
             })}
           >
-            <Text
-              style={[typography.label, { color: selected ? colors.onPrimary : colors.text }]}
-            >
+            <Text style={[typography.label, { color: selected ? colors.onPrimary : colors.text }]}>
               {serving.label}
             </Text>
           </Pressable>

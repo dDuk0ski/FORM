@@ -26,11 +26,7 @@ export function Screen({ title, children, scroll = true, edges = ['top'] }: Scre
 
   return (
     <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: colors.background }}>
-      {scroll ? (
-        <ScrollView keyboardShouldPersistTaps="handled">{content}</ScrollView>
-      ) : (
-        content
-      )}
+      {scroll ? <ScrollView keyboardShouldPersistTaps="handled">{content}</ScrollView> : content}
     </SafeAreaView>
   );
 }

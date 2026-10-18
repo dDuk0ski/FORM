@@ -76,10 +76,7 @@ export function QuantityField({
         {stepButton(1, incrementDisabled)}
       </View>
       {error ? (
-        <Text
-          accessibilityRole="alert"
-          style={[typography.caption, { color: colors.danger }]}
-        >
+        <Text accessibilityRole="alert" style={[typography.caption, { color: colors.danger }]}>
           {error}
         </Text>
       ) : null}
