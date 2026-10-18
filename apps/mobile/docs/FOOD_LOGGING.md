@@ -9,30 +9,23 @@ to the real backend; see `BACKEND_HANDOFF.md`.
    characters, with calories and macros for the default serving.
 2. Tap a result to open **Add food** (`/food-detail`). Pick a serving, enter or step the amount,
    see the scaled nutrition, and tap **Add to log**.
-3. Back in Log food, **Today** and **Logged today** update immediately. Entries can be removed.
+3. Back in Log food, **Nutrition** and **Logged today** update immediately. Entries can be removed.
 4. Close and reopen the app: the log is still there (stored on this device only).
 
 Every screen handles loading, empty, no-results, invalid-input, success and error states.
 Amounts must be 0.1 to 100 servings and at most 5000 g per entry.
 
-## Adding it to the Today tab
+## On the Today tab
 
-`src/app/(tabs)/index.tsx` was not part of the files I received, so I did not edit it. To show the
-dashboard and an entry point on Today:
+The Today screen has a **Log food** button and renders `<TodayNutrition />` under it: the day's
+totals for all four macros with progress toward targets, and the list of logged foods.
 
-```tsx
-import { router } from 'expo-router';
-import { Button } from '@/components';
-import { TodayNutrition } from '@/components/food';
-
-// inside the Today screen's <Screen>:
-<Button title="Log food" onPress={() => router.push('/log-food')} />
-<TodayNutrition />
-```
-
-Heads-up: the existing smoke test expects the mocked ML `consumed` numbers on Today (`2068 kcal`).
-`TodayNutrition` shows consumed from the **log**, so Today would show two different "consumed"
-figures. Decide with the team which one stays (question 4 in the backend handoff).
+Known mismatch while the ML service is mocked: the cards above it (`Eaten`, `Calories left`) come
+from `GET /today`, which returns a fixed fixture, so they do not move when you log food. The
+`Nutrition` card is computed from the log and does. Once the backend is real and `GET /today`
+reads the same food logs, the two should agree. Until then, expect two different "eaten" numbers
+on this screen, and decide with the team which one the demo shows (question 4 in
+`BACKEND_HANDOFF.md`).
 
 ## How it is built
 

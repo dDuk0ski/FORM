@@ -57,7 +57,7 @@ export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutrit
   return (
     <Card style={{ gap: spacing.md }}>
       <Text accessibilityRole="header" style={[typography.heading, { color: colors.text }]}>
-        Today
+        Nutrition
       </Text>
       <MacroProgressRow
         label="Calories"
