@@ -2,10 +2,13 @@ import { router } from 'expo-router';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { Button, Card, Row, Screen, StatTile } from '@/components';
+import { TodayNutrition } from '@/components/food';
 import { useToday } from '@/hooks/useToday';
 import { useTheme } from '@/theme';
 
 // Today: targets, consumed, remaining and readiness from GET /today.
+// The cards above come from GET /today. <TodayNutrition /> below is the food log: all four
+// macros summed from what was logged, with progress toward the same targets.
 // TODO(Today): gap closer button -> ml.gapCloser (POST /gap-closer).
 // TODO(Today): readiness check-in (sleep_h, soreness, stress) -> readiness_checkins.
 // TODO(Today): daily weigh-in -> body_metrics; show protein_split, micronutrient_flags.
@@ -34,6 +37,7 @@ export default function TodayScreen() {
         </Card>
       )}
       <Button title="Log food" onPress={() => router.push('/log-food')} />
+      <TodayNutrition />
     </Screen>
   );
 }
