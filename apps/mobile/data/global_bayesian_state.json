@@ -1,0 +1,28 @@
+{
+  "actions": {
+    "increase_weight": {
+      "alpha": 21.26354674796749,
+      "beta": 11.73645325203252,
+      "success_probability": 0.6443499014535601,
+      "evidence": 33.00000000000001
+    },
+    "increase_reps": {
+      "alpha": 1063.1730209865354,
+      "beta": 396.82697901345597,
+      "success_probability": 0.7282006993058505,
+      "evidence": 1459.9999999999914
+    },
+    "maintain": {
+      "alpha": 203.435119047619,
+      "beta": 89.5648809523809,
+      "success_probability": 0.6943178124492119,
+      "evidence": 292.9999999999999
+    },
+    "decrease": {
+      "alpha": 8.868749999999999,
+      "beta": 6.131250000000001,
+      "success_probability": 0.5912499999999999,
+      "evidence": 15.0
+    }
+  }
+}

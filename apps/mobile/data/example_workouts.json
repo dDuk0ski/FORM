@@ -1,0 +1,2128 @@
+[
+  {
+    "request": {
+      "goal": "hypertrophy",
+      "experience": "intermediate",
+      "days_per_week": 4,
+      "split": "upper_lower",
+      "duration_minutes": 60,
+      "equipment": [
+        "barbell",
+        "dumbbell",
+        "cable",
+        "body_weight",
+        "leverage_machine",
+        "smith_machine"
+      ],
+      "preferences": {
+        "compound_priority": 0.7,
+        "isolation_priority": 0.3,
+        "exercise_variety": 0.5
+      },
+      "excluded_exercises": [],
+      "excluded_muscles": [],
+      "seed": 42
+    },
+    "workouts": [
+      {
+        "id": "workout_bd9d490da0",
+        "name": "Upper A",
+        "goal": "hypertrophy",
+        "split": "upper_lower",
+        "duration_minutes": 60,
+        "estimated_minutes": 30,
+        "training_day": 1,
+        "focus": "upper",
+        "exercises": [
+          {
+            "exercise_id": "3294",
+            "name": "archer push up",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": "horizontal_push",
+            "compound": true,
+            "equipment": [
+              "body_weight"
+            ],
+            "sets": 2,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "primary_compound",
+            "selection_score": 0.97
+          },
+          {
+            "exercise_id": "0007",
+            "name": "alternate lateral pulldown",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "vertical_pull",
+            "compound": true,
+            "equipment": [
+              "cable"
+            ],
+            "sets": 3,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "vertical_pull",
+            "selection_score": 0.9
+          },
+          {
+            "exercise_id": "0091",
+            "name": "barbell seated overhead press",
+            "target_muscles": [
+              "front_delts"
+            ],
+            "primary_muscle": "front_delts",
+            "movement_pattern": "vertical_push",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "press",
+            "selection_score": 0.9
+          },
+          {
+            "exercise_id": "2407",
+            "name": "barbell biceps curl (with arm blaster)",
+            "target_muscles": [
+              "biceps"
+            ],
+            "primary_muscle": "biceps",
+            "movement_pattern": "elbow_flexion",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 90,
+            "role": "isolation",
+            "selection_score": 0.93
+          },
+          {
+            "exercise_id": "0048",
+            "name": "barbell incline reverse-grip press",
+            "target_muscles": [
+              "triceps"
+            ],
+            "primary_muscle": "triceps",
+            "movement_pattern": "elbow_extension",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 90,
+            "role": "isolation",
+            "selection_score": 0.93
+          },
+          {
+            "exercise_id": "2364",
+            "name": "assisted wide-grip chest dip (kneeling)",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": "horizontal_push",
+            "compound": true,
+            "equipment": [
+              "leverage_machine"
+            ],
+            "sets": 1,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "secondary_compound",
+            "selection_score": 0.97
+          },
+          {
+            "exercise_id": "0027",
+            "name": "barbell bent over row",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "horizontal_pull",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 1,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "horizontal_pull",
+            "selection_score": 0.9
+          }
+        ],
+        "volume": {
+          "biceps": 2,
+          "chest": 3,
+          "front_delts": 2,
+          "lats": 4,
+          "triceps": 2
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      {
+        "id": "workout_77c52cf771",
+        "name": "Lower A",
+        "goal": "hypertrophy",
+        "split": "upper_lower",
+        "duration_minutes": 60,
+        "estimated_minutes": 19,
+        "training_day": 2,
+        "focus": "lower",
+        "exercises": [
+          {
+            "exercise_id": "0098",
+            "name": "barbell side split squat",
+            "target_muscles": [
+              "quadriceps"
+            ],
+            "primary_muscle": "quadriceps",
+            "movement_pattern": "knee_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "primary_compound",
+            "selection_score": 0.97
+          },
+          {
+            "exercise_id": "0044",
+            "name": "barbell good morning",
+            "target_muscles": [
+              "hamstrings"
+            ],
+            "primary_muscle": "hamstrings",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "hip_hinge",
+            "selection_score": 0.97
+          },
+          {
+            "exercise_id": "1756",
+            "name": "barbell single leg deadlift",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "hip_dominant",
+            "selection_score": 0.97
+          },
+          {
+            "exercise_id": "1372",
+            "name": "barbell standing calf raise",
+            "target_muscles": [
+              "calves"
+            ],
+            "primary_muscle": "calves",
+            "movement_pattern": "plantar_flexion",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 90,
+            "role": "calf",
+            "selection_score": 0.93
+          }
+        ],
+        "volume": {
+          "calves": 2,
+          "glutes": 2,
+          "hamstrings": 2,
+          "quadriceps": 2
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      {
+        "id": "workout_05ebae9939",
+        "name": "Upper B",
+        "goal": "hypertrophy",
+        "split": "upper_lower",
+        "duration_minutes": 60,
+        "estimated_minutes": 30,
+        "training_day": 3,
+        "focus": "upper",
+        "exercises": [
+          {
+            "exercise_id": "0009",
+            "name": "assisted chest dip (kneeling)",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": "horizontal_push",
+            "compound": true,
+            "equipment": [
+              "leverage_machine"
+            ],
+            "sets": 2,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "primary_compound",
+            "selection_score": 0.97
+          },
+          {
+            "exercise_id": "3293",
+            "name": "archer pull up",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "vertical_pull",
+            "compound": true,
+            "equipment": [
+              "body_weight"
+            ],
+            "sets": 3,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "vertical_pull",
+            "selection_score": 0.9
+          },
+          {
+            "exercise_id": "0086",
+            "name": "barbell seated behind head military press",
+            "target_muscles": [
+              "front_delts"
+            ],
+            "primary_muscle": "front_delts",
+            "movement_pattern": "vertical_push",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "press",
+            "selection_score": 0.9
+          },
+          {
+            "exercise_id": "0031",
+            "name": "barbell curl",
+            "target_muscles": [
+              "biceps"
+            ],
+            "primary_muscle": "biceps",
+            "movement_pattern": "elbow_flexion",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 90,
+            "role": "isolation",
+            "selection_score": 0.93
+          },
+          {
+            "exercise_id": "1720",
+            "name": "barbell lying back of the head tricep extension",
+            "target_muscles": [
+              "triceps"
+            ],
+            "primary_muscle": "triceps",
+            "movement_pattern": "elbow_extension",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 90,
+            "role": "isolation",
+            "selection_score": 0.93
+          },
+          {
+            "exercise_id": "0047",
+            "name": "barbell incline bench press",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": "horizontal_push",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 1,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "secondary_compound",
+            "selection_score": 0.97
+          },
+          {
+            "exercise_id": "0118",
+            "name": "barbell reverse grip bent over row",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "horizontal_pull",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 1,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "horizontal_pull",
+            "selection_score": 0.9
+          }
+        ],
+        "volume": {
+          "biceps": 2,
+          "chest": 3,
+          "front_delts": 2,
+          "lats": 4,
+          "triceps": 2
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      {
+        "id": "workout_0668e4d5d5",
+        "name": "Lower B",
+        "goal": "hypertrophy",
+        "split": "upper_lower",
+        "duration_minutes": 60,
+        "estimated_minutes": 19,
+        "training_day": 4,
+        "focus": "lower",
+        "exercises": [
+          {
+            "exercise_id": "0024",
+            "name": "barbell bench front squat",
+            "target_muscles": [
+              "quadriceps"
+            ],
+            "primary_muscle": "quadriceps",
+            "movement_pattern": "knee_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "primary_compound",
+            "selection_score": 0.97
+          },
+          {
+            "exercise_id": "0090",
+            "name": "barbell seated good morning",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "hip_hinge",
+            "selection_score": 0.865
+          },
+          {
+            "exercise_id": "0066",
+            "name": "barbell one arm side deadlift",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 2,
+            "rest_seconds": 180,
+            "role": "hip_dominant",
+            "selection_score": 0.97
+          },
+          {
+            "exercise_id": "0111",
+            "name": "barbell standing rocking leg calf raise",
+            "target_muscles": [
+              "calves"
+            ],
+            "primary_muscle": "calves",
+            "movement_pattern": "plantar_flexion",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 90,
+            "role": "calf",
+            "selection_score": 0.93
+          }
+        ],
+        "volume": {
+          "calves": 2,
+          "glutes": 4,
+          "quadriceps": 2
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "goal": "strength",
+      "experience": "intermediate",
+      "days_per_week": 4,
+      "split": "upper_lower",
+      "duration_minutes": 75,
+      "equipment": [
+        "barbell",
+        "dumbbell",
+        "cable",
+        "body_weight",
+        "leverage_machine",
+        "smith_machine"
+      ],
+      "preferences": {
+        "compound_priority": 0.9,
+        "isolation_priority": 0.1,
+        "exercise_variety": 0.3
+      },
+      "excluded_exercises": [],
+      "excluded_muscles": [],
+      "seed": 43
+    },
+    "workouts": [
+      {
+        "id": "workout_4f63177cdf",
+        "name": "Upper A",
+        "goal": "strength",
+        "split": "upper_lower",
+        "duration_minutes": 75,
+        "estimated_minutes": 28,
+        "training_day": 1,
+        "focus": "upper",
+        "exercises": [
+          {
+            "exercise_id": "0025",
+            "name": "barbell bench press",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": "horizontal_push",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "primary_compound",
+            "selection_score": 0.99
+          },
+          {
+            "exercise_id": "3293",
+            "name": "archer pull up",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "vertical_pull",
+            "compound": true,
+            "equipment": [
+              "body_weight"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "vertical_pull",
+            "selection_score": 0.92
+          },
+          {
+            "exercise_id": "0105",
+            "name": "barbell standing bradford press",
+            "target_muscles": [
+              "front_delts"
+            ],
+            "primary_muscle": "front_delts",
+            "movement_pattern": "vertical_push",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "press",
+            "selection_score": 0.92
+          },
+          {
+            "exercise_id": "0059",
+            "name": "barbell lying preacher curl",
+            "target_muscles": [
+              "biceps"
+            ],
+            "primary_muscle": "biceps",
+            "movement_pattern": "elbow_flexion",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 150,
+            "role": "isolation",
+            "selection_score": 0.91
+          },
+          {
+            "exercise_id": "1720",
+            "name": "barbell lying back of the head tricep extension",
+            "target_muscles": [
+              "triceps"
+            ],
+            "primary_muscle": "triceps",
+            "movement_pattern": "elbow_extension",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 150,
+            "role": "isolation",
+            "selection_score": 0.91
+          },
+          {
+            "exercise_id": "0027",
+            "name": "barbell bent over row",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "horizontal_pull",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 1,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "horizontal_pull",
+            "selection_score": 0.92
+          }
+        ],
+        "volume": {
+          "biceps": 2,
+          "chest": 2,
+          "front_delts": 2,
+          "lats": 3,
+          "triceps": 2
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      {
+        "id": "workout_ccb74031b7",
+        "name": "Lower A",
+        "goal": "strength",
+        "split": "upper_lower",
+        "duration_minutes": 75,
+        "estimated_minutes": 22,
+        "training_day": 2,
+        "focus": "lower",
+        "exercises": [
+          {
+            "exercise_id": "0026",
+            "name": "barbell bench squat",
+            "target_muscles": [
+              "quadriceps"
+            ],
+            "primary_muscle": "quadriceps",
+            "movement_pattern": "knee_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "primary_compound",
+            "selection_score": 0.99
+          },
+          {
+            "exercise_id": "0066",
+            "name": "barbell one arm side deadlift",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "hip_hinge",
+            "selection_score": 0.885
+          },
+          {
+            "exercise_id": "0090",
+            "name": "barbell seated good morning",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "hip_dominant",
+            "selection_score": 0.99
+          },
+          {
+            "exercise_id": "1371",
+            "name": "barbell seated calf raise",
+            "target_muscles": [
+              "calves"
+            ],
+            "primary_muscle": "calves",
+            "movement_pattern": "plantar_flexion",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 150,
+            "role": "calf",
+            "selection_score": 0.91
+          }
+        ],
+        "volume": {
+          "calves": 2,
+          "glutes": 4,
+          "quadriceps": 2
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      {
+        "id": "workout_4d59a557f6",
+        "name": "Upper B",
+        "goal": "strength",
+        "split": "upper_lower",
+        "duration_minutes": 75,
+        "estimated_minutes": 28,
+        "training_day": 3,
+        "focus": "upper",
+        "exercises": [
+          {
+            "exercise_id": "0009",
+            "name": "assisted chest dip (kneeling)",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": "horizontal_push",
+            "compound": true,
+            "equipment": [
+              "leverage_machine"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "primary_compound",
+            "selection_score": 0.99
+          },
+          {
+            "exercise_id": "0015",
+            "name": "assisted parallel close grip pull-up",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "vertical_pull",
+            "compound": true,
+            "equipment": [
+              "leverage_machine"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "vertical_pull",
+            "selection_score": 0.92
+          },
+          {
+            "exercise_id": "0091",
+            "name": "barbell seated overhead press",
+            "target_muscles": [
+              "front_delts"
+            ],
+            "primary_muscle": "front_delts",
+            "movement_pattern": "vertical_push",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "press",
+            "selection_score": 0.92
+          },
+          {
+            "exercise_id": "0023",
+            "name": "barbell alternate biceps curl",
+            "target_muscles": [
+              "biceps"
+            ],
+            "primary_muscle": "biceps",
+            "movement_pattern": "elbow_flexion",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 150,
+            "role": "isolation",
+            "selection_score": 0.91
+          },
+          {
+            "exercise_id": "0035",
+            "name": "barbell decline close grip to skull press",
+            "target_muscles": [
+              "triceps"
+            ],
+            "primary_muscle": "triceps",
+            "movement_pattern": "elbow_extension",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 150,
+            "role": "isolation",
+            "selection_score": 0.91
+          },
+          {
+            "exercise_id": "0076",
+            "name": "barbell rear delt row",
+            "target_muscles": [
+              "rear_delts"
+            ],
+            "primary_muscle": "rear_delts",
+            "movement_pattern": "horizontal_pull",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 1,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "horizontal_pull",
+            "selection_score": 0.92
+          }
+        ],
+        "volume": {
+          "biceps": 2,
+          "chest": 2,
+          "front_delts": 2,
+          "lats": 2,
+          "rear_delts": 1,
+          "triceps": 2
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      {
+        "id": "workout_5a493aee11",
+        "name": "Lower B",
+        "goal": "strength",
+        "split": "upper_lower",
+        "duration_minutes": 75,
+        "estimated_minutes": 22,
+        "training_day": 4,
+        "focus": "lower",
+        "exercises": [
+          {
+            "exercise_id": "0024",
+            "name": "barbell bench front squat",
+            "target_muscles": [
+              "quadriceps"
+            ],
+            "primary_muscle": "quadriceps",
+            "movement_pattern": "knee_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "primary_compound",
+            "selection_score": 0.99
+          },
+          {
+            "exercise_id": "0032",
+            "name": "barbell deadlift",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "hip_hinge",
+            "selection_score": 0.885
+          },
+          {
+            "exercise_id": "0115",
+            "name": "barbell stiff leg good morning",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              3,
+              6
+            ],
+            "rir": 3,
+            "rest_seconds": 240,
+            "role": "hip_dominant",
+            "selection_score": 0.99
+          },
+          {
+            "exercise_id": "0111",
+            "name": "barbell standing rocking leg calf raise",
+            "target_muscles": [
+              "calves"
+            ],
+            "primary_muscle": "calves",
+            "movement_pattern": "plantar_flexion",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              15
+            ],
+            "rir": 2,
+            "rest_seconds": 150,
+            "role": "calf",
+            "selection_score": 0.91
+          }
+        ],
+        "volume": {
+          "calves": 2,
+          "glutes": 4,
+          "quadriceps": 2
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "goal": "general_fitness",
+      "experience": "beginner",
+      "days_per_week": 3,
+      "split": "full_body",
+      "duration_minutes": 45,
+      "equipment": [
+        "dumbbell",
+        "cable",
+        "body_weight",
+        "resistance_band"
+      ],
+      "preferences": {
+        "compound_priority": 0.6,
+        "isolation_priority": 0.4,
+        "exercise_variety": 0.7
+      },
+      "excluded_exercises": [],
+      "excluded_muscles": [],
+      "seed": 44
+    },
+    "workouts": [
+      {
+        "id": "workout_2637304714",
+        "name": "Full Body A",
+        "goal": "general_fitness",
+        "split": "full_body",
+        "duration_minutes": 45,
+        "estimated_minutes": 22,
+        "training_day": 1,
+        "focus": "full_body",
+        "exercises": [
+          {
+            "exercise_id": "0989",
+            "name": "band one arm twisting chest press",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": "horizontal_push",
+            "compound": true,
+            "equipment": [
+              "resistance_band"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "primary_compound",
+            "selection_score": 0.96
+          },
+          {
+            "exercise_id": "0007",
+            "name": "alternate lateral pulldown",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "vertical_pull",
+            "compound": true,
+            "equipment": [
+              "cable"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "vertical_pull",
+            "selection_score": 0.89
+          },
+          {
+            "exercise_id": "0410",
+            "name": "dumbbell single leg split squat",
+            "target_muscles": [
+              "quadriceps"
+            ],
+            "primary_muscle": "quadriceps",
+            "movement_pattern": "knee_dominant",
+            "compound": true,
+            "equipment": [
+              "dumbbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "primary_compound",
+            "selection_score": 0.96
+          },
+          {
+            "exercise_id": "0157",
+            "name": "cable deadlift",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "cable"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "hip_hinge",
+            "selection_score": 0.855
+          },
+          {
+            "exercise_id": "0997",
+            "name": "band shoulder press",
+            "target_muscles": [
+              "front_delts"
+            ],
+            "primary_muscle": "front_delts",
+            "movement_pattern": "vertical_push",
+            "compound": true,
+            "equipment": [
+              "resistance_band"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "press",
+            "selection_score": 0.89
+          }
+        ],
+        "volume": {
+          "chest": 2,
+          "front_delts": 2,
+          "glutes": 2,
+          "lats": 2,
+          "quadriceps": 2
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      {
+        "id": "workout_8e221d7aa7",
+        "name": "Full Body B",
+        "goal": "general_fitness",
+        "split": "full_body",
+        "duration_minutes": 45,
+        "estimated_minutes": 22,
+        "training_day": 2,
+        "focus": "full_body",
+        "exercises": [
+          {
+            "exercise_id": "0155",
+            "name": "cable cross-over variation",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": "horizontal_push",
+            "compound": true,
+            "equipment": [
+              "cable"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "primary_compound",
+            "selection_score": 0.96
+          },
+          {
+            "exercise_id": "3293",
+            "name": "archer pull up",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "vertical_pull",
+            "compound": true,
+            "equipment": [
+              "body_weight"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "vertical_pull",
+            "selection_score": 0.89
+          },
+          {
+            "exercise_id": "2812",
+            "name": "dumbbell step-up split squat",
+            "target_muscles": [
+              "quadriceps"
+            ],
+            "primary_muscle": "quadriceps",
+            "movement_pattern": "knee_dominant",
+            "compound": true,
+            "equipment": [
+              "dumbbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "primary_compound",
+            "selection_score": 0.96
+          },
+          {
+            "exercise_id": "1023",
+            "name": "band straight back stiff leg deadlift",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "resistance_band"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "hip_hinge",
+            "selection_score": 0.855
+          },
+          {
+            "exercise_id": "2137",
+            "name": "dumbbell arnold press",
+            "target_muscles": [
+              "front_delts"
+            ],
+            "primary_muscle": "front_delts",
+            "movement_pattern": "vertical_push",
+            "compound": true,
+            "equipment": [
+              "dumbbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "press",
+            "selection_score": 0.89
+          }
+        ],
+        "volume": {
+          "chest": 2,
+          "front_delts": 2,
+          "glutes": 2,
+          "lats": 2,
+          "quadriceps": 2
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      {
+        "id": "workout_9550ecb75c",
+        "name": "Full Body C",
+        "goal": "general_fitness",
+        "split": "full_body",
+        "duration_minutes": 45,
+        "estimated_minutes": 22,
+        "training_day": 3,
+        "focus": "full_body",
+        "exercises": [
+          {
+            "exercise_id": "0151",
+            "name": "cable bench press",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": "horizontal_push",
+            "compound": true,
+            "equipment": [
+              "cable"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "primary_compound",
+            "selection_score": 0.96
+          },
+          {
+            "exercise_id": "0983",
+            "name": "band kneeling one arm pulldown",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "vertical_pull",
+            "compound": true,
+            "equipment": [
+              "resistance_band"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "vertical_pull",
+            "selection_score": 0.89
+          },
+          {
+            "exercise_id": "1001",
+            "name": "band single leg split squat",
+            "target_muscles": [
+              "quadriceps"
+            ],
+            "primary_muscle": "quadriceps",
+            "movement_pattern": "knee_dominant",
+            "compound": true,
+            "equipment": [
+              "resistance_band"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "primary_compound",
+            "selection_score": 0.96
+          },
+          {
+            "exercise_id": "0991",
+            "name": "band pull through",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "resistance_band"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "hip_hinge",
+            "selection_score": 0.855
+          },
+          {
+            "exercise_id": "1012",
+            "name": "band twisting overhead press",
+            "target_muscles": [
+              "front_delts"
+            ],
+            "primary_muscle": "front_delts",
+            "movement_pattern": "vertical_push",
+            "compound": true,
+            "equipment": [
+              "resistance_band"
+            ],
+            "sets": 2,
+            "rep_range": [
+              8,
+              12
+            ],
+            "rir": 4,
+            "rest_seconds": 120,
+            "role": "press",
+            "selection_score": 0.89
+          }
+        ],
+        "volume": {
+          "chest": 2,
+          "front_delts": 2,
+          "glutes": 2,
+          "lats": 2,
+          "quadriceps": 2
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "goal": "hypertrophy",
+      "experience": "advanced",
+      "days_per_week": 5,
+      "split": "push_pull_legs",
+      "duration_minutes": 70,
+      "equipment": [
+        "barbell",
+        "dumbbell",
+        "cable",
+        "body_weight",
+        "leverage_machine",
+        "smith_machine"
+      ],
+      "preferences": {
+        "compound_priority": 0.65,
+        "isolation_priority": 0.35,
+        "exercise_variety": 0.7
+      },
+      "excluded_exercises": [],
+      "excluded_muscles": [],
+      "seed": 45
+    },
+    "workouts": [
+      {
+        "id": "workout_65100e339e",
+        "name": "Push",
+        "goal": "hypertrophy",
+        "split": "push_pull_legs",
+        "duration_minutes": 70,
+        "estimated_minutes": 28,
+        "training_day": 1,
+        "focus": "push",
+        "exercises": [
+          {
+            "exercise_id": "0009",
+            "name": "assisted chest dip (kneeling)",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": "horizontal_push",
+            "compound": true,
+            "equipment": [
+              "leverage_machine"
+            ],
+            "sets": 3,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 1,
+            "rest_seconds": 180,
+            "role": "primary_compound",
+            "selection_score": 0.965
+          },
+          {
+            "exercise_id": "0091",
+            "name": "barbell seated overhead press",
+            "target_muscles": [
+              "front_delts"
+            ],
+            "primary_muscle": "front_delts",
+            "movement_pattern": "vertical_push",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 3,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 1,
+            "rest_seconds": 180,
+            "role": "press",
+            "selection_score": 0.895
+          },
+          {
+            "exercise_id": "0035",
+            "name": "barbell decline close grip to skull press",
+            "target_muscles": [
+              "triceps"
+            ],
+            "primary_muscle": "triceps",
+            "movement_pattern": "elbow_extension",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 1,
+            "rest_seconds": 90,
+            "role": "isolation",
+            "selection_score": 0.935
+          },
+          {
+            "exercise_id": "2364",
+            "name": "assisted wide-grip chest dip (kneeling)",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": "horizontal_push",
+            "compound": true,
+            "equipment": [
+              "leverage_machine"
+            ],
+            "sets": 1,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 1,
+            "rest_seconds": 180,
+            "role": "secondary_compound",
+            "selection_score": 0.965
+          },
+          {
+            "exercise_id": "2355",
+            "name": "arm slingers hanging bent knee legs",
+            "target_muscles": [
+              "abs"
+            ],
+            "primary_muscle": "abs",
+            "movement_pattern": "core",
+            "compound": false,
+            "equipment": [
+              "body_weight"
+            ],
+            "sets": 1,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 1,
+            "rest_seconds": 90,
+            "role": "lateral_isolation",
+            "selection_score": 0.665
+          },
+          {
+            "exercise_id": "0056",
+            "name": "barbell lying close-grip triceps extension",
+            "target_muscles": [
+              "triceps"
+            ],
+            "primary_muscle": "triceps",
+            "movement_pattern": "elbow_extension",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 1,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 1,
+            "rest_seconds": 90,
+            "role": "isolation",
+            "selection_score": 0.935
+          },
+          {
+            "exercise_id": "0050",
+            "name": "barbell incline shoulder raise",
+            "target_muscles": [
+              "chest"
+            ],
+            "primary_muscle": "chest",
+            "movement_pattern": null,
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 1,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 1,
+            "rest_seconds": 90,
+            "role": "isolation",
+            "selection_score": 0.735
+          }
+        ],
+        "volume": {
+          "abs": 1,
+          "chest": 5,
+          "front_delts": 3,
+          "triceps": 3
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      {
+        "id": "workout_1104146230",
+        "name": "Pull",
+        "goal": "hypertrophy",
+        "split": "push_pull_legs",
+        "duration_minutes": 70,
+        "estimated_minutes": 28,
+        "training_day": 2,
+        "focus": "pull",
+        "exercises": [
+          {
+            "exercise_id": "0017",
+            "name": "assisted pull-up",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "vertical_pull",
+            "compound": true,
+            "equipment": [
+              "leverage_machine"
+            ],
+            "sets": 4,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 1,
+            "rest_seconds": 180,
+            "role": "vertical_pull",
+            "selection_score": 0.895
+          },
+          {
+            "exercise_id": "0240",
+            "name": "cable supine reverse fly",
+            "target_muscles": [
+              "rear_delts"
+            ],
+            "primary_muscle": "rear_delts",
+            "movement_pattern": "horizontal_pull",
+            "compound": false,
+            "equipment": [
+              "cable"
+            ],
+            "sets": 3,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 1,
+            "rest_seconds": 90,
+            "role": "isolation",
+            "selection_score": 0.935
+          },
+          {
+            "exercise_id": "2407",
+            "name": "barbell biceps curl (with arm blaster)",
+            "target_muscles": [
+              "biceps"
+            ],
+            "primary_muscle": "biceps",
+            "movement_pattern": "elbow_flexion",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 1,
+            "rest_seconds": 90,
+            "role": "isolation",
+            "selection_score": 0.935
+          },
+          {
+            "exercise_id": "0064",
+            "name": "barbell one arm bent over row",
+            "target_muscles": [
+              "lats"
+            ],
+            "primary_muscle": "lats",
+            "movement_pattern": "horizontal_pull",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 1,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 1,
+            "rest_seconds": 180,
+            "role": "horizontal_pull",
+            "selection_score": 0.895
+          },
+          {
+            "exercise_id": "0038",
+            "name": "barbell drag curl",
+            "target_muscles": [
+              "biceps"
+            ],
+            "primary_muscle": "biceps",
+            "movement_pattern": "elbow_flexion",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 1,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 1,
+            "rest_seconds": 90,
+            "role": "isolation",
+            "selection_score": 0.935
+          },
+          {
+            "exercise_id": "0225",
+            "name": "cable standing cross-over high reverse fly",
+            "target_muscles": [
+              "rear_delts"
+            ],
+            "primary_muscle": "rear_delts",
+            "movement_pattern": "horizontal_pull",
+            "compound": false,
+            "equipment": [
+              "cable"
+            ],
+            "sets": 1,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 1,
+            "rest_seconds": 90,
+            "role": "secondary_pull",
+            "selection_score": 0.865
+          }
+        ],
+        "volume": {
+          "biceps": 3,
+          "lats": 5,
+          "rear_delts": 4
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      {
+        "id": "workout_61a2ee9559",
+        "name": "Legs",
+        "goal": "hypertrophy",
+        "split": "push_pull_legs",
+        "duration_minutes": 70,
+        "estimated_minutes": 41,
+        "training_day": 3,
+        "focus": "legs",
+        "exercises": [
+          {
+            "exercise_id": "0068",
+            "name": "barbell one leg squat",
+            "target_muscles": [
+              "quadriceps"
+            ],
+            "primary_muscle": "quadriceps",
+            "movement_pattern": "knee_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 3,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 1,
+            "rest_seconds": 180,
+            "role": "primary_compound",
+            "selection_score": 0.965
+          },
+          {
+            "exercise_id": "0044",
+            "name": "barbell good morning",
+            "target_muscles": [
+              "hamstrings"
+            ],
+            "primary_muscle": "hamstrings",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 3,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 1,
+            "rest_seconds": 180,
+            "role": "hip_hinge",
+            "selection_score": 0.965
+          },
+          {
+            "exercise_id": "1756",
+            "name": "barbell single leg deadlift",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 3,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 1,
+            "rest_seconds": 180,
+            "role": "hip_dominant",
+            "selection_score": 0.965
+          },
+          {
+            "exercise_id": "0088",
+            "name": "barbell seated calf raise",
+            "target_muscles": [
+              "calves"
+            ],
+            "primary_muscle": "calves",
+            "movement_pattern": "plantar_flexion",
+            "compound": false,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 3,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 1,
+            "rest_seconds": 90,
+            "role": "calf",
+            "selection_score": 0.935
+          },
+          {
+            "exercise_id": "0097",
+            "name": "barbell side split squat v. 2",
+            "target_muscles": [
+              "quadriceps"
+            ],
+            "primary_muscle": "quadriceps",
+            "movement_pattern": "knee_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 2,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 1,
+            "rest_seconds": 180,
+            "role": "secondary_compound",
+            "selection_score": 0.965
+          },
+          {
+            "exercise_id": "3193",
+            "name": "glute-ham raise",
+            "target_muscles": [
+              "hamstrings"
+            ],
+            "primary_muscle": "hamstrings",
+            "movement_pattern": "knee_flexion",
+            "compound": false,
+            "equipment": [
+              "body_weight"
+            ],
+            "sets": 1,
+            "rep_range": [
+              10,
+              15
+            ],
+            "rir": 1,
+            "rest_seconds": 90,
+            "role": "leg_curl",
+            "selection_score": 0.935
+          },
+          {
+            "exercise_id": "0032",
+            "name": "barbell deadlift",
+            "target_muscles": [
+              "glutes"
+            ],
+            "primary_muscle": "glutes",
+            "movement_pattern": "hip_dominant",
+            "compound": true,
+            "equipment": [
+              "barbell"
+            ],
+            "sets": 1,
+            "rep_range": [
+              6,
+              10
+            ],
+            "rir": 1,
+            "rest_seconds": 180,
+            "role": "hip_extension",
+            "selection_score": 0.765
+          }
+        ],
+        "volume": {
+          "calves": 3,
+          "glutes": 4,
+          "hamstrings": 4,
+          "quadriceps": 5
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      }
+    ]
+  }
+]

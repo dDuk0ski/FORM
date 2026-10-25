@@ -1,0 +1,19 @@
+{
+  "weeks": 52,
+  "days_per_week": 4,
+  "goal": "hypertrophy",
+  "experience": "intermediate",
+  "split": "upper_lower",
+  "decision_counts": {
+    "increase_reps": 962,
+    "increase_weight": 14,
+    "decrease": 3,
+    "maintain": 165
+  },
+  "performance_counts": {
+    "moderate": 885,
+    "good": 207,
+    "failure": 3,
+    "excellent": 27
+  }
+}
