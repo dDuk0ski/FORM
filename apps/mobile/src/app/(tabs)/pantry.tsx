@@ -1,4 +1,6 @@
-import { Screen } from '@/components';
+import { router } from 'expo-router';
+
+import { Button, Screen } from '@/components';
 
 // Pantry: what food the user has at home.
 // TODO(Pantry): list pantry_items (food name, quantity_g, display_unit,
@@ -8,5 +10,9 @@ import { Screen } from '@/components';
 // TODO(Pantry, stretch goal): receipt scanning — upload to Supabase Storage, then
 // ml.parseReceipt (POST /receipt); confirm every item, flag confidence < 0.6.
 export default function PantryScreen() {
-  return <Screen title="Pantry" />;
+  return (
+    <Screen title="Pantry">
+      <Button title="Add item" onPress={() => router.push('/pantry-item')} />
+    </Screen>
+  );
 }

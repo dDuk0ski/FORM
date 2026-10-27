@@ -1,4 +1,6 @@
-import { Screen } from '@/components';
+import { router } from 'expo-router';
+
+import { Button, Screen } from '@/components';
 
 // Train: workout logging and readiness-adjusted sessions.
 // TODO(Train): start a workout, pick from `exercises`, log sets (weight_kg,
@@ -7,5 +9,9 @@ import { Screen } from '@/components';
 // TODO(Train): e1RM chart per lift from workout_sets.e1rm.
 // TODO(Train): show readiness advice from ml.getReadiness (GET /readiness).
 export default function TrainScreen() {
-  return <Screen title="Train" />;
+  return (
+    <Screen title="Train">
+      <Button title="Start workout" onPress={() => router.push('/workout-logger')} />
+    </Screen>
+  );
 }
