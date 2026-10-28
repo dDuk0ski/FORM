@@ -1,0 +1,628 @@
+{
+  "exercises": {
+    "3294": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.5900000000000001,
+          0.68
+        ],
+        "maintain": [
+          0.515,
+          0.6587500000000001,
+          0.8862500000000001,
+          0.6525000000000001,
+          0.6587500000000001,
+          0.5425
+        ],
+        "decrease": [
+          0.68
+        ]
+      },
+      "failure|below_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.0
+        ],
+        "decrease": []
+      },
+      "moderate|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.515
+        ],
+        "decrease": []
+      }
+    },
+    "0007": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.54,
+          0.63
+        ],
+        "maintain": [
+          0.69875,
+          0.5425,
+          0.56125,
+          0.40249999999999997,
+          0.6358333333333335,
+          0.68,
+          0.5883333333333334,
+          0.4925,
+          0.68
+        ],
+        "decrease": []
+      }
+    },
+    "0086": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.515,
+          0.68
+        ],
+        "maintain": [
+          0.605,
+          0.74875,
+          0.74875,
+          0.68,
+          0.515,
+          0.52125,
+          0.68,
+          0.68,
+          0.515
+        ],
+        "decrease": []
+      }
+    },
+    "0976": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.735,
+          0.625,
+          0.535,
+          0.7000000000000001,
+          0.68,
+          0.66,
+          0.735,
+          0.7550000000000001,
+          0.5900000000000001
+        ],
+        "decrease": []
+      },
+      "moderate|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.7000000000000001,
+          0.7000000000000001
+        ],
+        "decrease": []
+      }
+    },
+    "0035": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.79,
+          0.6699999999999999,
+          0.68,
+          0.515,
+          0.68,
+          0.5900000000000001,
+          0.77,
+          0.68,
+          0.735,
+          0.7000000000000001
+        ],
+        "decrease": []
+      },
+      "failure|below_range": {
+        "increase_weight": [
+          0.0
+        ],
+        "increase_reps": [],
+        "maintain": [],
+        "decrease": []
+      }
+    },
+    "2364": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.68,
+          0.5874999999999999
+        ],
+        "maintain": [
+          0.5900000000000001,
+          0.7275,
+          0.5425
+        ],
+        "decrease": [
+          0.4525,
+          0.68
+        ]
+      },
+      "failure|below_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "decrease": [
+          0.0
+        ]
+      }
+    },
+    "0988": {
+      "failure|below_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [],
+        "decrease": []
+      },
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.68,
+          0.5425,
+          0.68,
+          0.7275,
+          0.68,
+          0.8175,
+          0.5900000000000001,
+          0.8175
+        ],
+        "decrease": []
+      },
+      "good|top_of_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.8650000000000001,
+          0.8650000000000001
+        ],
+        "decrease": []
+      },
+      "excellent|top_of_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.9550000000000001
+        ],
+        "decrease": []
+      }
+    },
+    "0068": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.5425
+        ],
+        "maintain": [
+          0.68,
+          0.6525000000000001,
+          0.5900000000000001,
+          0.6112500000000001,
+          0.6112500000000001,
+          0.8862500000000001,
+          0.6112500000000001,
+          0.68,
+          0.605,
+          0.4675
+        ],
+        "decrease": []
+      }
+    },
+    "0044": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.52125
+        ],
+        "maintain": [
+          0.33,
+          0.6112500000000001,
+          0.68,
+          0.47375,
+          0.6587500000000001,
+          0.7875000000000001,
+          0.47375,
+          0.605,
+          0.37750000000000006
+        ],
+        "decrease": []
+      },
+      "moderate|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.6525000000000001
+        ],
+        "decrease": []
+      }
+    },
+    "0066": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.605
+        ],
+        "maintain": [
+          0.74875,
+          0.6525000000000001,
+          0.65,
+          0.6525000000000001,
+          0.6112500000000001,
+          0.5425,
+          0.37750000000000006,
+          0.6525000000000001
+        ],
+        "decrease": []
+      },
+      "excellent|top_of_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.88
+        ],
+        "decrease": []
+      },
+      "moderate|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.37750000000000006
+        ],
+        "decrease": []
+      }
+    },
+    "1370": {
+      "good|mid_range": {
+        "increase_weight": [
+          0.68
+        ],
+        "increase_reps": [],
+        "maintain": [
+          0.645,
+          0.55,
+          0.4600000000000001,
+          0.735,
+          0.645,
+          0.4600000000000001,
+          0.7550000000000001
+        ],
+        "decrease": []
+      },
+      "moderate|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.4600000000000001,
+          0.4600000000000001,
+          0.4600000000000001
+        ],
+        "decrease": []
+      }
+    },
+    "0009": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.68,
+          0.5425
+        ],
+        "maintain": [
+          0.52125,
+          0.33,
+          0.5900000000000001,
+          0.68,
+          0.74875
+        ],
+        "decrease": [
+          0.605,
+          0.5425
+        ]
+      },
+      "failure|below_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.0,
+          0.0
+        ],
+        "decrease": []
+      }
+    },
+    "3293": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.54
+        ],
+        "maintain": [
+          0.68,
+          0.7716666666666666,
+          0.7258333333333334,
+          0.7716666666666666,
+          0.69875,
+          0.68,
+          0.7716666666666666,
+          0.56125
+        ],
+        "decrease": []
+      },
+      "failure|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.7175
+        ],
+        "maintain": [],
+        "decrease": []
+      },
+      "good|top_of_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [],
+        "decrease": [
+          0.8650000000000001
+        ]
+      }
+    },
+    "0997": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.6112500000000001
+        ],
+        "maintain": [
+          0.7962500000000001,
+          0.6525000000000001,
+          0.6112500000000001,
+          0.6525000000000001,
+          0.605,
+          0.5900000000000001,
+          0.68,
+          0.6587500000000001,
+          0.52125,
+          0.7275
+        ],
+        "decrease": []
+      }
+    },
+    "0986": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.5900000000000001,
+          0.8450000000000001,
+          0.645,
+          0.8450000000000001,
+          0.535,
+          0.7000000000000001,
+          0.5900000000000001,
+          0.7550000000000001,
+          0.735,
+          0.79
+        ],
+        "decrease": []
+      },
+      "moderate|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.68
+        ],
+        "decrease": []
+      }
+    },
+    "0048": {
+      "good|mid_range": {
+        "increase_weight": [
+          0.625
+        ],
+        "increase_reps": [],
+        "maintain": [
+          0.485,
+          0.33,
+          0.68,
+          0.5700000000000001,
+          0.5700000000000001,
+          0.55,
+          0.645,
+          0.5900000000000001,
+          0.515
+        ],
+        "decrease": []
+      },
+      "moderate|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.5700000000000001
+        ],
+        "decrease": []
+      }
+    },
+    "0036": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.5425
+        ],
+        "maintain": [
+          0.7275,
+          0.68,
+          0.8175,
+          0.68,
+          0.68,
+          0.405
+        ],
+        "decrease": [
+          0.5425
+        ]
+      },
+      "failure|below_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.0,
+          0.0
+        ],
+        "decrease": []
+      },
+      "moderate|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [],
+        "decrease": [
+          0.5900000000000001
+        ]
+      }
+    },
+    "0064": {
+      "failure|below_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.0
+        ],
+        "decrease": []
+      },
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.68,
+          0.5425,
+          0.5425,
+          0.5900000000000001,
+          0.68,
+          0.5425,
+          0.5425,
+          0.4525
+        ],
+        "decrease": [
+          0.68
+        ]
+      },
+      "excellent|top_of_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.9550000000000001
+        ],
+        "decrease": []
+      }
+    },
+    "0987": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.6112500000000001
+        ],
+        "maintain": [
+          0.74875,
+          0.8175,
+          0.7425,
+          0.5900000000000001,
+          0.6587500000000001,
+          0.7275,
+          0.7425,
+          0.8175,
+          0.7275,
+          0.74875
+        ],
+        "decrease": []
+      }
+    },
+    "1010": {
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.6587500000000001
+        ],
+        "maintain": [
+          0.74875,
+          0.7275,
+          0.8862500000000001,
+          0.605,
+          0.515,
+          0.8175,
+          0.68,
+          0.8175,
+          0.7962500000000001,
+          0.74875
+        ],
+        "decrease": []
+      }
+    },
+    "1009": {
+      "moderate|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.6587500000000001
+        ],
+        "decrease": []
+      },
+      "good|mid_range": {
+        "increase_weight": [],
+        "increase_reps": [
+          0.68
+        ],
+        "maintain": [
+          0.6587500000000001,
+          0.8175,
+          0.68,
+          0.68,
+          0.4525,
+          0.6525000000000001,
+          0.8175,
+          0.515,
+          0.68
+        ],
+        "decrease": []
+      }
+    },
+    "1371": {
+      "good|mid_range": {
+        "increase_weight": [
+          0.44
+        ],
+        "increase_reps": [],
+        "maintain": [
+          0.33,
+          0.79,
+          0.625,
+          0.68,
+          0.5700000000000001,
+          0.535
+        ],
+        "decrease": [
+          0.735,
+          0.5700000000000001
+        ]
+      },
+      "failure|below_range": {
+        "increase_weight": [],
+        "increase_reps": [],
+        "maintain": [
+          0.0,
+          0.0
+        ],
+        "decrease": []
+      }
+    }
+  }
+}

@@ -1,218 +1,396 @@
 from __future__ import annotations
 
 import json
-import math
 import random
-from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
 
-from workout_generator import ExerciseDatabase, WorkoutGenerator, WorkoutRequest
-from global_progression_model import GlobalObservation, GlobalProgressionModel, SetResult
-from local_progression_model import LocalObservation, LocalProgressionModel
+import numpy as np
+
+from fast_global_progression_model import (
+    ACTIONS,
+    PERFORMANCE_CLASSES,
+    GlobalObservation,
+    GlobalProgressionModel,
+    SetResult,
+)
+from fast_local_progression_model import LocalProgressionModel
+from workout_generator import (
+    ExerciseDatabase,
+    WorkoutGenerator,
+    WorkoutRequest,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
 EXERCISE_FILE = BASE_DIR / "normalized_exercises.json"
 RESULTS_DIR = BASE_DIR / "simulation_results"
 
-DEFAULT_WEEKS = 52
-DEFAULT_SEED = 42
-
-GOALS = {
-    "1": ("hypertrophy", "Hypertrophy"),
-    "2": ("strength", "Strength"),
-    "3": ("general_fitness", "General Fitness"),
-}
-
-EXPERIENCE_LEVELS = {
-    "1": ("beginner", "Beginner"),
-    "2": ("intermediate", "Intermediate"),
-    "3": ("advanced", "Advanced"),
-}
-
-DAYS_OPTIONS = {
-    "1": 2,
-    "2": 3,
-    "3": 4,
-    "4": 5,
-}
-
-DURATION_OPTIONS = {
-    "1": 30,
-    "2": 45,
-    "3": 60,
-    "4": 75,
-    "5": 90,
-}
-
-SPLIT_OPTIONS = {
-    "1": ("full_body", "Full Body"),
-    "2": ("upper_lower", "Upper / Lower"),
-    "3": ("push_pull_legs", "Push / Pull / Legs"),
-    "4": ("ppl_upper_lower", "PPL + Upper / Lower"),
-    "5": ("bro_split", "Bro Split"),
-}
-
-EQUIPMENT_OPTIONS = [
-    "barbell",
-    "dumbbell",
-    "cable",
-    "body_weight",
-    "machine",
-    "kettlebell",
-    "resistance_band",
-    "ez_bar",
-    "smith_machine",
-]
-
-MUSCLE_OPTIONS = [
-    "chest",
-    "back",
-    "shoulders",
-    "side_delts",
-    "rear_delts",
-    "biceps",
-    "triceps",
-    "forearms",
-    "quadriceps",
-    "hamstrings",
-    "glutes",
-    "calves",
-    "core",
-]
-
-PREFERENCE_DEFAULTS = {
-    "compound_priority": 0.7,
-    "isolation_priority": 0.3,
-    "exercise_variety": 0.5,
-    "free_weight_preference": 0.5,
-    "machine_preference": 0.5,
-}
-
-
-@dataclass
-class ExercisePrescription:
-    exercise_id: str
-    exercise_number: int
-    name: str
-    equipment: list[str]
-    target_muscles: list[str]
-    sets: int
-    rep_range: tuple[int, int]
-    rir: float
-    rest_seconds: int
-    role: str
-    compound: bool
-    starting_weight: float
-
 
 @dataclass
 class ExerciseState:
     exercise_id: str
-    exercise_number: int
     name: str
+    weight: float
     starting_weight: float
-    current_weight: float
-    starting_rep_range: tuple[int, int]
-    current_rep_range: tuple[int, int]
-    target_rir: float
-    history: list[dict[str, Any]]
+    rep_range: list[int]
+    starting_rep_range: list[int]
+    sets: int
+    rir: float
+    compound: bool
+    equipment: list[str]
+    movement_pattern: str | None
+    role: str
+    history: list[dict]
+
+
+@dataclass
+class SimulationMetrics:
+    total_observations: int = 0
+    correct_progressions: int = 0
+    incorrect_progressions: int = 0
+    acceptable_progressions: int = 0
+    unacceptable_progressions: int = 0
+    increase_weight: int = 0
+    increase_reps: int = 0
+    maintain: int = 0
+    decrease: int = 0
+    excellent: int = 0
+    good: int = 0
+    moderate: int = 0
+    poor: int = 0
+    failure: int = 0
+
+    @property
+    def decision_accuracy(self) -> float:
+        if self.total_observations == 0:
+            return 0.0
+        return (
+            self.correct_progressions
+            / self.total_observations
+        )
+
+    @property
+    def acceptable_accuracy(self) -> float:
+        if self.total_observations == 0:
+            return 0.0
+        return (
+            self.acceptable_progressions
+            / self.total_observations
+        )
 
 
 class SimulatedAthlete:
-    def __init__(self, seed: int = DEFAULT_SEED):
+    def __init__(
+        self,
+        seed: int = 42,
+        ability: float = 0.60,
+        consistency: float = 0.80,
+        recovery: float = 0.78,
+    ):
         self.rng = random.Random(seed)
-        self.strength: dict[str, float] = {}
-        self.adaptation: dict[str, float] = {}
-        self.exercise_noise: dict[str, float] = {}
 
-    def initialize_exercise(
+        self.ability = float(
+            np.clip(
+                ability,
+                0.25,
+                0.90,
+            )
+        )
+
+        self.consistency = float(
+            np.clip(
+                consistency,
+                0.40,
+                1.00,
+            )
+        )
+
+        self.recovery = float(
+            np.clip(
+                recovery,
+                0.40,
+                1.00,
+            )
+        )
+
+        self.fatigue = 0.0
+        self.exercise_adaptation: dict[str, float] = {}
+        self.exercise_familiarity: dict[str, float] = {}
+        self.session_count = 0
+
+    def _adaptation(
         self,
         exercise_id: str,
-        starting_weight: float,
+    ) -> float:
+        return self.exercise_adaptation.get(
+            exercise_id,
+            0.0,
+        )
+
+    def _familiarity(
+        self,
+        exercise_id: str,
+    ) -> float:
+        return self.exercise_familiarity.get(
+            exercise_id,
+            0.0,
+        )
+
+    @staticmethod
+    def _is_bodyweight(
+        weight: float,
+    ) -> bool:
+        return weight <= 0.0
+
+    def _update_fatigue(self):
+        self.fatigue += self.rng.uniform(
+            0.008,
+            0.025,
+        )
+
+        recovery_amount = (
+            self.recovery
+            * self.rng.uniform(
+                0.018,
+                0.030,
+            )
+        )
+
+        self.fatigue -= recovery_amount
+
+        self.fatigue = float(
+            np.clip(
+                self.fatigue,
+                0.0,
+                0.35,
+            )
+        )
+
+    def start_session(self):
+        self.session_count += 1
+
+        self.fatigue += self.rng.uniform(
+            0.005,
+            0.025,
+        )
+
+        if self.session_count % 4 == 0:
+            recovery_bonus = (
+                self.recovery
+                * 0.06
+            )
+
+            self.fatigue = max(
+                0.0,
+                self.fatigue
+                - recovery_bonus,
+            )
+
+    def _action_effect(
+        self,
+        previous_action: str | None,
+    ) -> float:
+        if previous_action == "increase_weight":
+            return -0.075
+
+        if previous_action == "increase_reps":
+            return -0.025
+
+        if previous_action == "maintain":
+            return 0.015
+
+        if previous_action == "decrease":
+            return 0.065
+
+        return 0.0
+
+    def _difficulty(
+        self,
+        weight: float,
         compound: bool,
-    ) -> None:
-        if exercise_id in self.strength:
-            return
+    ) -> float:
+        if self._is_bodyweight(weight):
+            return 0.0
 
-        if starting_weight <= 0:
-            base_strength = 30.0
-        else:
-            multiplier = 1.28 if compound else 1.20
-            base_strength = starting_weight * multiplier
+        normalized_weight = (
+            weight
+            / (weight + 40.0)
+        )
 
-        self.strength[exercise_id] = base_strength
-        self.adaptation[exercise_id] = 0.0
-        self.exercise_noise[exercise_id] = self.rng.uniform(0.92, 1.08)
+        compound_modifier = (
+            0.035
+            if compound
+            else 0.015
+        )
+
+        return (
+            normalized_weight * 0.16
+            + compound_modifier
+        )
 
     def simulate(
         self,
-        prescription: ExercisePrescription,
-        week: int,
-    ) -> tuple[list[SetResult], str]:
+        prescription,
+        previous_action: str | None = None,
+    ) -> list[SetResult]:
         exercise_id = prescription.exercise_id
 
-        self.initialize_exercise(
-            exercise_id,
-            prescription.starting_weight,
+        self._update_fatigue()
+
+        adaptation = self._adaptation(
+            exercise_id
+        )
+
+        familiarity = self._familiarity(
+            exercise_id
+        )
+
+        action_effect = self._action_effect(
+            previous_action
+        )
+
+        difficulty = self._difficulty(
+            prescription.weight,
             prescription.compound,
         )
 
-        strength = self.strength[exercise_id]
-        adaptation = self.adaptation[exercise_id]
-        noise = self.exercise_noise[exercise_id]
+        consistency_noise = self.rng.gauss(
+            0.0,
+            (1.0 - self.consistency) * 0.28,
+        )
 
-        low, high = prescription.rep_range
-        target_reps = (low + high) / 2
-        weight = prescription.starting_weight
+        recovery_variation = self.rng.gauss(
+            0.0,
+            (1.0 - self.recovery) * 0.10,
+        )
 
-        if weight <= 0:
-            difficulty = 0.55
-        else:
-            difficulty = weight / max(strength + adaptation, 1.0)
+        performance = (
+            self.ability
+            + adaptation
+            + familiarity * 0.04
+            + action_effect
+            + consistency_noise
+            + recovery_variation
+            - self.fatigue
+            - difficulty
+        )
 
-        difficulty += self.rng.uniform(-0.035, 0.035)
-        difficulty *= noise
+        performance = float(
+            np.clip(
+                performance,
+                0.03,
+                0.97,
+            )
+        )
 
-        performance = 1.0 - difficulty
+        minimum, maximum = (
+            prescription.rep_range
+        )
 
-        results: list[SetResult] = []
+        range_width = max(
+            1,
+            maximum - minimum,
+        )
 
-        for set_index in range(prescription.sets):
-            fatigue = set_index * 0.025
-            set_performance = performance - fatigue
-            set_performance += self.rng.uniform(-0.035, 0.035)
+        rep_center = (
+            minimum
+            + range_width * performance
+        )
 
-            completed = set_performance > 0.05
+        actual_sets: list[SetResult] = []
 
-            if not completed:
-                reps = 0
-                rir = 0.0
-            else:
-                rep_factor = 0.72 + set_performance * 0.70
-                reps = int(round(target_reps * rep_factor))
-                reps = max(1, min(high + 2, reps))
-
-                rir_base = prescription.rir + (
-                    set_performance - 0.30
-                ) * 3.0
-
-                rir = max(
-                    0.0,
-                    min(4.0, rir_base),
+        for set_index in range(
+            prescription.sets
+        ):
+            set_fatigue = (
+                set_index
+                * self.rng.uniform(
+                    0.10,
+                    0.20,
                 )
+            )
 
-                rir += self.rng.uniform(-0.25, 0.25)
-                rir = max(
-                    0.0,
-                    min(4.0, rir),
+            set_performance = float(
+                np.clip(
+                    performance
+                    - set_fatigue,
+                    0.03,
+                    0.97,
                 )
+            )
 
-            results.append(
+            variation = self.rng.gauss(
+                0.0,
+                0.85,
+            )
+
+            reps = int(
+                round(
+                    rep_center
+                    + (
+                        set_performance
+                        - performance
+                    ) * 2.0
+                    + variation
+                )
+            )
+
+            reps = max(
+                1,
+                min(
+                    maximum + 1,
+                    reps,
+                ),
+            )
+
+            target_rir = prescription.rir
+
+            rir = (
+                target_rir
+                + (
+                    0.55
+                    - set_performance
+                ) * 2.1
+                + self.rng.gauss(
+                    0.0,
+                    0.45,
+                )
+            )
+
+            rir = float(
+                np.clip(
+                    rir,
+                    0.0,
+                    5.0,
+                )
+            )
+
+            completion_probability = (
+                0.66
+                + performance * 0.30
+                - max(
+                    0.0,
+                    -action_effect,
+                ) * 0.25
+            )
+
+            completion_probability = float(
+                np.clip(
+                    completion_probability,
+                    0.35,
+                    0.99,
+                )
+            )
+
+            completed = (
+                self.rng.random()
+                < completion_probability
+            )
+
+            actual_sets.append(
                 SetResult(
-                    weight=weight,
+                    weight=prescription.weight,
                     reps=reps,
                     rir=rir,
                     completed=completed,
@@ -221,1739 +399,1403 @@ class SimulatedAthlete:
 
         completed_sets = [
             result
-            for result in results
+            for result in actual_sets
             if result.completed
         ]
 
-        if not completed_sets:
-            outcome = "failure"
+        if completed_sets:
+            average_reps = float(
+                np.mean(
+                    [
+                        result.reps
+                        for result in completed_sets
+                    ]
+                )
+            )
         else:
-            average_reps = sum(
-                result.reps
-                for result in completed_sets
-            ) / len(completed_sets)
+            average_reps = 0.0
 
-            if (
-                len(completed_sets) == len(results)
-                and average_reps >= high
-            ):
-                outcome = "excellent"
-            elif (
-                len(completed_sets) == len(results)
-                and average_reps >= low
-            ):
-                outcome = "good"
-            elif len(completed_sets) >= max(
-                1,
-                math.ceil(len(results) * 0.5),
-            ):
-                outcome = "moderate"
-            else:
-                outcome = "poor"
+        if average_reps >= maximum:
+            adaptation_change = (
+                self.rng.uniform(
+                    0.008,
+                    0.025,
+                )
+            )
+        elif average_reps >= minimum:
+            adaptation_change = (
+                self.rng.uniform(
+                    0.001,
+                    0.012,
+                )
+            )
+        elif average_reps >= minimum - 1:
+            adaptation_change = (
+                self.rng.uniform(
+                    -0.010,
+                    0.004,
+                )
+            )
+        else:
+            adaptation_change = (
+                self.rng.uniform(
+                    -0.020,
+                    -0.002,
+                )
+            )
 
-        self.adaptation[exercise_id] += self.rng.uniform(
-            0.15,
-            0.45,
+        self.exercise_adaptation[
+            exercise_id
+        ] = float(
+            np.clip(
+                adaptation
+                + adaptation_change,
+                -0.20,
+                0.35,
+            )
         )
 
-        return results, outcome
+        self.exercise_familiarity[
+            exercise_id
+        ] = float(
+            np.clip(
+                familiarity + 0.035,
+                0.0,
+                1.0,
+            )
+        )
+
+        return actual_sets
 
 
-class Simulation:
+class ProgressionSimulation:
     def __init__(
         self,
-        request: WorkoutRequest,
-        weeks: int,
-        seed: int,
+        weeks: int = 12,
+        seed: int = 42,
+        goal: str = "hypertrophy",
+        experience: str = "intermediate",
+        days_per_week: int = 4,
+        split: str = "upper_lower",
+        duration_minutes: int = 60,
     ):
-        self.request = request
         self.weeks = weeks
         self.seed = seed
+        self.goal = goal
+        self.experience = experience
+        self.days_per_week = days_per_week
+        self.split = split
+        self.duration_minutes = duration_minutes
+
         self.rng = random.Random(seed)
-
-        self.database = ExerciseDatabase(
-            EXERCISE_FILE
-        )
-
-        self.generator = WorkoutGenerator(
-            database=self.database,
-            seed=seed,
-        )
-
-        self.program = self.generator.generate_program(
-            request
-        )
+        np.random.seed(seed)
 
         self.global_model = GlobalProgressionModel(
-            state_file=BASE_DIR / "global_bayesian_state.json",
-            prior_alpha=2.0,
-            prior_beta=2.0,
-            minimum_confidence=0.50,
+            state_file=BASE_DIR
+            / "simulation_global_state.json"
         )
 
         self.local_model = LocalProgressionModel(
-            global_model=self.global_model,
-            state_file="local_bayesian_state.json",
-            prior_alpha=2.0,
-            prior_beta=2.0,
-            global_influence_evidence=10.0,
-            exploration_evidence=6.0,
-            exploration_rate=0.10,
-            random_seed=43,
+            self.global_model,
+            state_file=BASE_DIR
+            / "simulation_local_state.json",
         )
 
         self.athlete = SimulatedAthlete(
-            seed=seed
+            seed=seed,
+            ability=0.62,
+            consistency=0.76,
+            recovery=0.74,
         )
-
-        self.prescriptions: dict[
-            str,
-            ExercisePrescription,
-        ] = {}
 
         self.exercise_states: dict[
             str,
             ExerciseState,
         ] = {}
 
-        self.history: list[
-            dict[str, Any]
-        ] = []
-
-        self.progression_counts = Counter()
-        self.outcome_counts = Counter()
-
-        self._initialize_prescriptions()
-
-    def _starting_weight(
-        self,
-        exercise: Any,
-    ) -> float:
-        equipment = {
-            str(item).lower()
-            for item in getattr(
-                exercise,
-                "equipment",
-                [],
-            )
-        }
-
-        compound = bool(
-            getattr(
-                exercise,
-                "compound",
-                False,
-            )
-        )
-
-        role = str(
-            getattr(
-                exercise,
-                "role",
-                "",
-            )
-        ).lower()
-
-        if "body_weight" in equipment:
-            return 0.0
-
-        if "barbell" in equipment:
-            base = 85.0 if compound else 45.0
-        elif "smith_machine" in equipment:
-            base = 75.0 if compound else 40.0
-        elif "machine" in equipment:
-            base = 70.0 if compound else 35.0
-        elif "dumbbell" in equipment:
-            base = 30.0 if compound else 15.0
-        elif "cable" in equipment:
-            base = 35.0 if compound else 20.0
-        elif "kettlebell" in equipment:
-            base = 35.0 if compound else 20.0
-        elif "ez_bar" in equipment:
-            base = 50.0
-        elif "resistance_band" in equipment:
-            base = 20.0
-        else:
-            base = 25.0
-
-        role_adjustment = {
-            "primary_compound": 1.10,
-            "secondary_compound": 0.95,
-            "hip_hinge": 1.05,
-            "vertical_pull": 0.95,
-            "horizontal_pull": 0.95,
-            "press": 0.90,
-            "isolation": 0.65,
-            "lateral_isolation": 0.50,
-            "rear_delt_isolation": 0.50,
-            "calf": 0.70,
-            "core": 0.50,
-        }.get(
-            role,
-            0.75,
-        )
-
-        variation = self.rng.uniform(
-            0.90,
-            1.10,
-        )
-
-        return round(
-            max(
-                2.5,
-                base * role_adjustment * variation,
-            ),
-            1,
-        )
-
-    def _initialize_prescriptions(self) -> None:
-        exercise_number = 0
-
-        for workout in self.program:
-            for exercise in workout.exercises:
-                exercise_number += 1
-
-                if exercise.exercise_id in self.prescriptions:
-                    continue
-
-                starting_weight = self._starting_weight(
-                    exercise
-                )
-
-                prescription = ExercisePrescription(
-                    exercise_id=exercise.exercise_id,
-                    exercise_number=exercise_number,
-                    name=exercise.name,
-                    equipment=list(
-                        exercise.equipment
-                    ),
-                    target_muscles=list(
-                        exercise.target_muscles
-                    ),
-                    sets=exercise.sets,
-                    rep_range=(
-                        int(exercise.rep_range[0]),
-                        int(exercise.rep_range[1]),
-                    ),
-                    rir=float(exercise.rir),
-                    rest_seconds=int(
-                        exercise.rest_seconds
-                    ),
-                    role=exercise.role,
-                    compound=bool(
-                        exercise.compound
-                    ),
-                    starting_weight=starting_weight,
-                )
-
-                self.prescriptions[
-                    exercise.exercise_id
-                ] = prescription
-
-                self.exercise_states[
-                    exercise.exercise_id
-                ] = ExerciseState(
-                    exercise_id=exercise.exercise_id,
-                    exercise_number=exercise_number,
-                    name=exercise.name,
-                    starting_weight=starting_weight,
-                    current_weight=starting_weight,
-                    starting_rep_range=prescription.rep_range,
-                    current_rep_range=prescription.rep_range,
-                    target_rir=prescription.rir,
-                    history=[],
-                )
-
-                self.athlete.initialize_exercise(
-                    exercise.exercise_id,
-                    starting_weight,
-                    bool(exercise.compound),
-                )
-
-    def _weight_increment(
-        self,
-        prescription: ExercisePrescription,
-    ) -> float:
-        if prescription.starting_weight <= 0:
-            return 0.0
-
-        return (
-            5.0
-            if prescription.compound
-            else 2.5
-        )
-
-    def _apply_action(
-        self,
-        prescription: ExercisePrescription,
-        decision: str,
-    ) -> None:
-        increment = self._weight_increment(
-            prescription
-        )
-
-        low, high = prescription.rep_range
-
-        if decision == "increase_weight":
-            if prescription.starting_weight > 0:
-                prescription.starting_weight += increment
-
-        elif decision == "increase_reps":
-            prescription.rep_range = (
-                low + 1,
-                high + 1,
-            )
-
-        elif decision == "decrease":
-            if prescription.starting_weight > 0:
-                prescription.starting_weight = max(
-                    increment,
-                    prescription.starting_weight - increment,
-                )
-
-        state = self.exercise_states[
-            prescription.exercise_id
-        ]
-
-        state.current_weight = (
-            prescription.starting_weight
-        )
-
-        state.current_rep_range = (
-            prescription.rep_range
-        )
-
-    def _global_observation(
-        self,
-        prescription: ExercisePrescription,
-        actual_sets: list[SetResult],
-        tested_action: str | None,
-    ) -> GlobalObservation:
-        return GlobalObservation(
-            actual_sets=actual_sets,
-            previous_rep_range=prescription.rep_range,
-            previous_target_rir=prescription.rir,
-            tested_action=tested_action,
-            exercise_number=prescription.exercise_number,
-        )
-
-    def _local_observation(
-        self,
-        prescription: ExercisePrescription,
-        actual_sets: list[SetResult],
-        tested_action: str | None,
-    ) -> LocalObservation:
-        return LocalObservation(
-            exercise_id=prescription.exercise_id,
-            exercise_number=prescription.exercise_number,
-            actual_sets=actual_sets,
-            previous_rep_range=prescription.rep_range,
-            previous_target_rir=prescription.rir,
-            tested_action=tested_action,
-        )
-
-    def _recommend(
-        self,
-        prescription: ExercisePrescription,
-        actual_sets: list[SetResult],
-        tested_action: str | None,
-    ) -> dict[str, Any]:
-        global_observation = self._global_observation(
-            prescription,
-            actual_sets,
-            tested_action,
-        )
-
-        local_observation = self._local_observation(
-            prescription,
-            actual_sets,
-            tested_action,
-        )
-
-        global_recommendation = (
-            self.global_model.recommend(
-                global_observation
-            )
-        )
-
-        local_recommendation = (
-            self.local_model.recommend(
-                local_observation
-            )
-        )
-
-        return {
-            "decision": local_recommendation.decision,
-            "confidence": local_recommendation.confidence,
-            "probability_of_success": (
-                local_recommendation
-                .probability_of_success
-            ),
-            "local_probability": (
-                local_recommendation
-                .local_probability
-            ),
-            "global_probability": (
-                local_recommendation
-                .global_probability
-            ),
-            "probabilities": (
-                local_recommendation
-                .probabilities
-            ),
-            "reason": local_recommendation.reason,
-            "global_recommendation": asdict(
-                global_recommendation
-            ),
-        }
-
-    def run(self) -> dict[str, Any]:
-        previous_actions: dict[
+        self.previous_actions: dict[
             str,
             str | None,
-        ] = {
-            exercise_id: None
-            for exercise_id in self.prescriptions
+        ] = {}
+
+        self.results: list[dict] = []
+
+        self.metrics = SimulationMetrics()
+
+    def _create_generator(self):
+        if not EXERCISE_FILE.exists():
+            raise FileNotFoundError(
+                f"Could not find {EXERCISE_FILE}"
+            )
+
+        database = ExerciseDatabase(
+            EXERCISE_FILE
+        )
+
+        return WorkoutGenerator(
+            database=database,
+            seed=self.seed,
+        )
+
+    def _create_request(self):
+        return WorkoutRequest(
+            goal=self.goal,
+            experience=self.experience,
+            days_per_week=self.days_per_week,
+            split=self.split,
+            duration_minutes=self.duration_minutes,
+            equipment=[
+                "barbell",
+                "dumbbell",
+                "cable",
+                "body_weight",
+                "leverage_machine",
+                "smith_machine",
+                "resistance_band",
+                "kettlebell",
+            ],
+            preferences={
+                "compound_priority": 0.70,
+                "isolation_priority": 0.30,
+                "exercise_variety": 0.50,
+                "free_weight_preference": 0.50,
+                "machine_preference": 0.50,
+            },
+            excluded_exercises=[],
+            excluded_muscles=[],
+            seed=self.seed,
+        )
+
+    def _weight_from_name(
+        self,
+        exercise,
+    ) -> float:
+        name = exercise.name.lower()
+
+        equipment = {
+            str(value).lower()
+            for value in exercise.equipment
         }
 
-        for week in range(
-            1,
-            self.weeks + 1,
+        bodyweight_equipment = {
+            "body_weight",
+            "bodyweight",
+        }
+
+        bodyweight_terms = [
+            "push up",
+            "push-up",
+            "pull up",
+            "pull-up",
+            "chin up",
+            "chin-up",
+            "muscle up",
+            "muscle-up",
+            "pistol squat",
+            "handstand",
+            "plank",
+        ]
+
+        if (
+            equipment
+            & bodyweight_equipment
         ):
-            for workout in self.program:
-                for exercise in workout.exercises:
-                    exercise_id = exercise.exercise_id
+            return 0.0
 
-                    prescription = (
-                        self.prescriptions[
-                            exercise_id
-                        ]
-                    )
+        if any(
+            term in name
+            for term in bodyweight_terms
+        ):
+            return 0.0
 
-                    previous_action = (
-                        previous_actions[
-                            exercise_id
-                        ]
-                    )
-
-                    actual_sets, outcome = (
-                        self.athlete.simulate(
-                            prescription,
-                            week,
-                        )
-                    )
-
-                    self.outcome_counts[
-                        outcome
-                    ] += 1
-
-                    if previous_action is not None:
-                        global_observation = (
-                            self._global_observation(
-                                prescription,
-                                actual_sets,
-                                previous_action,
-                            )
-                        )
-
-                        local_observation = (
-                            self._local_observation(
-                                prescription,
-                                actual_sets,
-                                previous_action,
-                            )
-                        )
-
-                        self.global_model.update(
-                            global_observation
-                        )
-
-                        self.local_model.update(
-                            local_observation
-                        )
-
-                    recommendation = self._recommend(
-                        prescription,
-                        actual_sets,
-                        previous_action,
-                    )
-
-                    decision = recommendation[
-                        "decision"
+        if (
+            "barbell" in equipment
+        ):
+            if exercise.compound:
+                if any(
+                    keyword in name
+                    for keyword in [
+                        "deadlift",
+                        "rack pull",
+                        "hip thrust",
                     ]
+                ):
+                    return 185.0
 
-                    if week == self.weeks:
-                        decision = "maintain"
+                if any(
+                    keyword in name
+                    for keyword in [
+                        "squat",
+                        "leg press",
+                    ]
+                ):
+                    return 155.0
 
-                    self.progression_counts[
-                        decision
-                    ] += 1
+                return 95.0
 
-                    self._record_history(
-                        week,
-                        workout,
-                        prescription,
-                        actual_sets,
-                        outcome,
-                        previous_action,
-                        recommendation,
-                        decision,
-                    )
+            return 55.0
 
-                    self._apply_action(
-                        prescription,
-                        decision,
-                    )
+        if (
+            "smith_machine" in equipment
+            or "leverage_machine" in equipment
+        ):
+            if exercise.compound:
+                return 90.0
 
-                    previous_actions[
-                        exercise_id
-                    ] = decision
+            return 45.0
 
-        self.global_model.save_state()
-        self.local_model.save_state()
+        if "machine" in equipment:
+            if exercise.compound:
+                return 80.0
 
-        return self._build_results()
+            return 40.0
 
-    def _record_history(
+        if "cable" in equipment:
+            if exercise.compound:
+                return 60.0
+
+            return 30.0
+
+        if "dumbbell" in equipment:
+            if exercise.compound:
+                return 45.0
+
+            return 20.0
+
+        if "kettlebell" in equipment:
+            if exercise.compound:
+                return 40.0
+
+            return 20.0
+
+        if (
+            "resistance_band" in equipment
+            or "band" in equipment
+        ):
+            return 0.0
+
+        if exercise.compound:
+            return 50.0
+
+        return 20.0
+
+    def _get_state(
         self,
-        week: int,
-        workout: Any,
-        prescription: ExercisePrescription,
+        exercise,
+    ) -> ExerciseState:
+        exercise_id = str(
+            exercise.exercise_id
+        )
+
+        if exercise_id not in self.exercise_states:
+            starting_weight = (
+                self._weight_from_name(
+                    exercise
+                )
+            )
+
+            self.exercise_states[
+                exercise_id
+            ] = ExerciseState(
+                exercise_id=exercise_id,
+                name=exercise.name,
+                weight=starting_weight,
+                starting_weight=starting_weight,
+                rep_range=list(
+                    exercise.rep_range
+                ),
+                starting_rep_range=list(
+                    exercise.rep_range
+                ),
+                sets=exercise.sets,
+                rir=float(exercise.rir),
+                compound=exercise.compound,
+                equipment=list(
+                    exercise.equipment
+                ),
+                movement_pattern=(
+                    exercise.movement_pattern
+                ),
+                role=exercise.role,
+                history=[],
+            )
+
+        return self.exercise_states[
+            exercise_id
+        ]
+
+    @staticmethod
+    def _is_bodyweight(
+        state: ExerciseState,
+    ) -> bool:
+        return state.weight <= 0.0
+
+    def _rep_cap(
+        self,
+        state: ExerciseState,
+    ) -> int:
+        if self.goal == "strength":
+            return (
+                8
+                if state.compound
+                else 12
+            )
+
+        if self.goal == "hypertrophy":
+            return (
+                12
+                if state.compound
+                else 15
+            )
+
+        return (
+            15
+            if state.compound
+            else 20
+        )
+
+    def _rep_position(
+        self,
+        state: ExerciseState,
         actual_sets: list[SetResult],
-        outcome: str,
-        previous_action: str | None,
-        recommendation: dict[str, Any],
-        decision: str,
-    ) -> None:
-        completed_sets = [
+    ) -> str:
+        completed = [
             result
             for result in actual_sets
             if result.completed
         ]
 
-        average_reps = (
-            sum(
-                result.reps
-                for result in completed_sets
-            )
-            / len(completed_sets)
-            if completed_sets
-            else 0.0
+        if not completed:
+            return "below_range"
+
+        minimum, maximum = (
+            state.rep_range
         )
 
-        average_rir = (
-            sum(
-                result.rir
-                for result in completed_sets
-            )
-            / len(completed_sets)
-            if completed_sets
-            else 0.0
-        )
-
-        entry = {
-            "week": week,
-            "workout_id": workout.id,
-            "workout_name": workout.name,
-            "training_day": workout.training_day,
-            "exercise_id": prescription.exercise_id,
-            "exercise_number": prescription.exercise_number,
-            "exercise_name": prescription.name,
-            "target_muscles": prescription.target_muscles,
-            "role": prescription.role,
-            "compound": prescription.compound,
-            "prescribed_weight": prescription.starting_weight,
-            "prescribed_rep_range": list(
-                prescription.rep_range
-            ),
-            "target_rir": prescription.rir,
-            "sets": prescription.sets,
-            "actual_sets": [
-                asdict(result)
-                for result in actual_sets
-            ],
-            "completed_sets": len(
-                completed_sets
-            ),
-            "average_reps": round(
-                average_reps,
-                2,
-            ),
-            "average_rir": round(
-                average_rir,
-                2,
-            ),
-            "outcome": outcome,
-            "previous_action": previous_action,
-            "decision": decision,
-            "confidence": recommendation[
-                "confidence"
-            ],
-            "probability_of_success": recommendation[
-                "probability_of_success"
-            ],
-            "local_probability": recommendation[
-                "local_probability"
-            ],
-            "global_probability": recommendation[
-                "global_probability"
-            ],
-            "probabilities": recommendation[
-                "probabilities"
-            ],
-            "reason": recommendation[
-                "reason"
-            ],
-        }
-
-        self.history.append(entry)
-
-        self.exercise_states[
-            prescription.exercise_id
-        ].history.append(entry)
-
-    def _build_results(self) -> dict[str, Any]:
-        exercise_results = {}
-
-        for exercise_id, state in (
-            self.exercise_states.items()
-        ):
-            history = state.history
-
-            exercise_results[
-                exercise_id
-            ] = {
-                "exercise_id": exercise_id,
-                "exercise_number": state.exercise_number,
-                "name": state.name,
-                "starting_weight": state.starting_weight,
-                "final_weight": state.current_weight,
-                "starting_rep_range": list(
-                    state.starting_rep_range
-                ),
-                "final_rep_range": list(
-                    state.current_rep_range
-                ),
-                "target_rir": state.target_rir,
-                "decision_counts": dict(
-                    Counter(
-                        entry["decision"]
-                        for entry in history
-                    )
-                ),
-                "history": history,
-            }
-
-        return {
-            "configuration": asdict(
-                self.request
-            ),
-            "weeks": self.weeks,
-            "seed": self.seed,
-            "workout_sessions": (
-                len(self.program)
-                * self.weeks
-            ),
-            "exercise_observations": len(
-                self.history
-            ),
-            "progression_decisions": dict(
-                self.progression_counts
-            ),
-            "performance_outcomes": dict(
-                self.outcome_counts
-            ),
-            "global_state": (
-                self.global_model.get_state()
-            ),
-            "exercise_progression": (
-                exercise_results
-            ),
-            "history": self.history,
-        }
-
-
-def print_header(title: str) -> None:
-    print()
-    print("=" * 80)
-    print(title)
-    print("=" * 80)
-
-
-def select_option(
-    title: str,
-    options: dict[str, tuple[Any, str]],
-    default: str,
-) -> Any:
-    print()
-    print(title)
-
-    for key, value in options.items():
-        print(
-            f"  {key}. {value[1]}"
-        )
-
-    while True:
-        choice = (
-            input(
-                f"Select [{default}]: "
-            ).strip()
-            or default
-        )
-
-        if choice in options:
-            return options[choice][0]
-
-        print("Invalid selection.")
-
-
-def select_days() -> int:
-    print()
-    print("Days Per Week")
-
-    for key, value in DAYS_OPTIONS.items():
-        print(
-            f"  {key}. {value} days"
-        )
-
-    while True:
-        choice = (
-            input("Select [3]: ").strip()
-            or "3"
-        )
-
-        if choice in DAYS_OPTIONS:
-            return DAYS_OPTIONS[choice]
-
-        print("Invalid selection.")
-
-
-def select_duration() -> int:
-    print()
-    print("Workout Duration")
-
-    for key, value in DURATION_OPTIONS.items():
-        print(
-            f"  {key}. {value} minutes"
-        )
-
-    while True:
-        choice = (
-            input("Select [3]: ").strip()
-            or "3"
-        )
-
-        if choice in DURATION_OPTIONS:
-            return DURATION_OPTIONS[choice]
-
-        print("Invalid selection.")
-
-
-def select_split(
-    days_per_week: int,
-) -> str:
-    print()
-    print("Split")
-
-    available = dict(
-        SPLIT_OPTIONS
-    )
-
-    if days_per_week < 5:
-        available.pop("5", None)
-
-    if days_per_week < 4:
-        available.pop("4", None)
-
-    for key, value in available.items():
-        print(
-            f"  {key}. {value[1]}"
-        )
-
-    default = "1"
-
-    while True:
-        choice = (
-            input(
-                f"Select [{default}]: "
-            ).strip()
-            or default
-        )
-
-        if choice in available:
-            split_value = available[
-                choice
-            ][0]
-
-            return split_value
-
-        print("Invalid selection.")
-
-
-def select_equipment() -> list[str]:
-    print()
-    print("Equipment")
-    print(
-        "Enter equipment numbers separated by commas."
-    )
-    print(
-        "Enter A for all available equipment."
-    )
-
-    for index, equipment in enumerate(
-        EQUIPMENT_OPTIONS,
-        start=1,
-    ):
-        print(
-            f"  {index}. {equipment}"
-        )
-
-    while True:
-        raw = input(
-            "Select [A]: "
-        ).strip()
-
-        if not raw or raw.lower() == "a":
-            return list(
-                EQUIPMENT_OPTIONS
-            )
-
-        try:
-            indexes = [
-                int(value.strip())
-                for value in raw.split(",")
-            ]
-        except ValueError:
-            print("Invalid selection.")
-            continue
-
-        selected = []
-
-        for index in indexes:
-            if 1 <= index <= len(
-                EQUIPMENT_OPTIONS
-            ):
-                equipment = (
-                    EQUIPMENT_OPTIONS[
-                        index - 1
-                    ]
-                )
-
-                if equipment not in selected:
-                    selected.append(
-                        equipment
-                    )
-
-        if selected:
-            return selected
-
-        print(
-            "No valid equipment selected."
-        )
-
-
-def select_target_muscles() -> list[str]:
-    print()
-    print("Target Muscles")
-    print(
-        "Enter numbers separated by commas."
-    )
-    print(
-        "Press Enter or type A/all for all muscles."
-    )
-
-    for index, muscle in enumerate(
-        MUSCLE_OPTIONS,
-        start=1,
-    ):
-        print(
-            f"  {index}. {muscle}"
-        )
-
-    raw = input(
-        "Select [all]: "
-    ).strip().lower()
-
-    if raw in {
-        "",
-        "a",
-        "all",
-    }:
-        return []
-
-    try:
-        indexes = [
-            int(value.strip())
-            for value in raw.split(",")
-        ]
-    except ValueError:
-        print(
-            "Invalid selection. "
-            "Using all muscles."
-        )
-        return []
-
-    selected = []
-
-    for index in indexes:
-        if 1 <= index <= len(
-            MUSCLE_OPTIONS
-        ):
-            selected.append(
-                MUSCLE_OPTIONS[
-                    index - 1
+        average_reps = float(
+            np.mean(
+                [
+                    result.reps
+                    for result in completed
                 ]
             )
-
-    if not selected:
-        print(
-            "No valid muscles selected. "
-            "Using all muscles."
-        )
-        return []
-
-    return selected
-
-
-def select_float(
-    title: str,
-    default: float,
-) -> float:
-    while True:
-        raw = input(
-            f"{title} [{default:.2f}]: "
-        ).strip()
-
-        if not raw:
-            return default
-
-        try:
-            value = float(raw)
-        except ValueError:
-            print(
-                "Enter a number."
-            )
-            continue
-
-        if 0.0 <= value <= 1.0:
-            return value
-
-        print(
-            "Enter a value from 0.0 to 1.0."
         )
 
+        if average_reps < minimum:
+            return "below_range"
 
-def select_preferences() -> dict[str, float]:
-    print()
-    print("Training Preferences")
-    print(
-        "Each value ranges from 0.0 to 1.0."
-    )
+        if average_reps >= maximum:
+            return "top_of_range"
 
-    preferences = {}
+        return "mid_range"
 
-    for key, default in (
-        PREFERENCE_DEFAULTS.items()
-    ):
-        display = key.replace(
-            "_",
-            " ",
-        ).title()
-
-        preferences[key] = select_float(
-            display,
-            default,
+    def _eligible_actions(
+        self,
+        observation: GlobalObservation,
+        performance: str,
+        state: ExerciseState,
+    ) -> list[str]:
+        actions = self.global_model.eligible_actions(
+            observation,
+            performance,
         )
 
-    return preferences
+        actions = list(actions)
 
+        if self._is_bodyweight(state):
+            actions = [
+                action
+                for action in actions
+                if action != "increase_weight"
+            ]
 
-def select_weeks() -> int:
-    print()
-    print("Simulation Length")
+        rep_cap = self._rep_cap(state)
 
-    print("  1. 12 weeks")
-    print("  2. 26 weeks")
-    print("  3. 52 weeks")
-    print("  4. Custom")
+        if state.rep_range[1] >= rep_cap:
+            actions = [
+                action
+                for action in actions
+                if action != "increase_reps"
+            ]
 
-    while True:
-        choice = (
-            input("Select [3]: ").strip()
-            or "3"
-        )
-
-        if choice == "1":
-            return 12
-
-        if choice == "2":
-            return 26
-
-        if choice == "3":
-            return 52
-
-        if choice == "4":
-            while True:
-                try:
-                    weeks = int(
-                        input(
-                            "Number of weeks: "
-                        ).strip()
-                    )
-
-                    if weeks > 0:
-                        return weeks
-                except ValueError:
-                    pass
-
-                print(
-                    "Enter a positive "
-                    "whole number."
+            if (
+                performance
+                in {
+                    "excellent",
+                    "good",
+                }
+                and not self._is_bodyweight(state)
+                and "increase_weight"
+                not in actions
+            ):
+                actions.insert(
+                    0,
+                    "increase_weight",
                 )
 
-        print("Invalid selection.")
+        if not actions:
+            actions = ["maintain"]
 
+        return actions
 
-def select_seed() -> int:
-    raw = input(
-        f"Random Seed [{DEFAULT_SEED}]: "
-    ).strip()
-
-    if not raw:
-        return DEFAULT_SEED
-
-    try:
-        return int(raw)
-    except ValueError:
-        print(
-            "Invalid seed. "
-            "Using 42."
-        )
-        return DEFAULT_SEED
-
-
-def build_request() -> tuple[
-    WorkoutRequest,
-    int,
-    int,
-]:
-    print_header(
-        "WORKOUT SIMULATION CONFIGURATION"
-    )
-
-    goal = select_option(
-        "Goal",
-        GOALS,
-        "1",
-    )
-
-    experience = select_option(
-        "Experience",
-        EXPERIENCE_LEVELS,
-        "2",
-    )
-
-    days_per_week = select_days()
-
-    split = select_split(
-        days_per_week
-    )
-
-    duration_minutes = select_duration()
-
-    equipment = select_equipment()
-
-    target_muscles = (
-        select_target_muscles()
-    )
-
-    preferences = (
-        select_preferences()
-    )
-
-    weeks = select_weeks()
-
-    seed = select_seed()
-
-    preferences[
-        "target_muscles"
-    ] = target_muscles
-
-    request = WorkoutRequest(
-        goal=goal,
-        experience=experience,
-        days_per_week=days_per_week,
-        split=split,
-        duration_minutes=duration_minutes,
-        equipment=equipment,
-        preferences=preferences,
-        excluded_exercises=[],
-        excluded_muscles=[],
-        seed=seed,
-    )
-
-    return (
-        request,
-        weeks,
-        seed,
-    )
-
-
-def print_configuration(
-    request: WorkoutRequest,
-    weeks: int,
-    seed: int,
-) -> None:
-    print_header(
-        "SELECTED CONFIGURATION"
-    )
-
-    print(
-        f"Goal:           {request.goal}"
-    )
-
-    print(
-        f"Experience:     {request.experience}"
-    )
-
-    print(
-        f"Days per week:  {request.days_per_week}"
-    )
-
-    print(
-        f"Split:          {request.split}"
-    )
-
-    print(
-        f"Duration:       "
-        f"{request.duration_minutes} minutes"
-    )
-
-    print(
-        f"Simulation:     {weeks} weeks"
-    )
-
-    print(
-        f"Seed:            {seed}"
-    )
-
-    print()
-    print("Equipment:")
-
-    for equipment in request.equipment:
-        print(
-            f"  - {equipment}"
+    def _update_models(
+        self,
+        state: ExerciseState,
+        actual_sets: list[SetResult],
+        previous_action: str | None,
+    ):
+        observation = GlobalObservation(
+            actual_sets=actual_sets,
+            previous_rep_range=tuple(
+                state.rep_range
+            ),
+            previous_target_rir=state.rir,
+            tested_action=previous_action,
         )
 
-    target_muscles = (
-        request.preferences.get(
-            "target_muscles",
-            [],
+        performance = (
+            self.global_model
+            .performance(observation)
         )
-    )
 
-    print()
-    print("Target muscles:")
+        rep_position = (
+            self.global_model
+            .rep_position(observation)
+        )
 
-    if target_muscles:
-        for muscle in target_muscles:
-            print(
-                f"  - {muscle}"
+        score = (
+            self.global_model
+            .success_score(observation)
+        )
+
+        if previous_action is not None:
+            self.global_model.update(
+                observation
             )
-    else:
-        print(
-            "  - All applicable muscles"
+
+            self.local_model.update(
+                exercise=state.exercise_id,
+                action=previous_action,
+                score=score,
+                performance=performance,
+                rep_position=rep_position,
+            )
+
+        return (
+            observation,
+            performance,
+            rep_position,
+            score,
         )
 
-    print()
-    print("Preferences:")
-
-    for key in PREFERENCE_DEFAULTS:
-        print(
-            f"  {key}: "
-            f"{request.preferences.get(key, 0.0):.2f}"
+    def _recommend(
+        self,
+        state: ExerciseState,
+        actual_sets: list[SetResult],
+        previous_action: str | None,
+    ):
+        (
+            observation,
+            performance,
+            rep_position,
+            score,
+        ) = self._update_models(
+            state,
+            actual_sets,
+            previous_action,
         )
 
+        eligible_actions = (
+            self._eligible_actions(
+                observation,
+                performance,
+                state,
+            )
+        )
 
-def print_program(
-    program: list[Any],
-) -> None:
-    print_header(
-        "GENERATED WORKOUT PROGRAM"
-    )
+        local = self.local_model.recommend(
+            exercise=state.exercise_id,
+            eligible_actions=eligible_actions,
+            performance=performance,
+            rep_position=rep_position,
+        )
 
-    for workout in program:
+        return {
+            "decision": local["decision"],
+            "confidence": local["confidence"],
+            "probability": local[
+                "probability"
+            ],
+            "probabilities": local[
+                "probabilities"
+            ],
+            "performance": performance,
+            "rep_position": rep_position,
+            "score": score,
+            "eligible_actions": eligible_actions,
+        }
+
+    def _true_action(
+        self,
+        performance: str,
+        rep_position: str,
+        state: ExerciseState,
+        actual_sets: list[SetResult],
+    ) -> str:
+        completed = [
+            result
+            for result in actual_sets
+            if result.completed
+        ]
+
+        if not completed:
+            return "decrease"
+
+        average_reps = float(
+            np.mean(
+                [
+                    result.reps
+                    for result in completed
+                ]
+            )
+        )
+
+        average_rir = float(
+            np.mean(
+                [
+                    result.rir
+                    for result in completed
+                ]
+            )
+        )
+
+        minimum, maximum = (
+            state.rep_range
+        )
+
+        rep_cap = self._rep_cap(
+            state
+        )
+
+        if performance == "failure":
+            return "decrease"
+
+        if performance == "poor":
+            if (
+                self.rng.random()
+                < 0.75
+            ):
+                return "maintain"
+
+            return "decrease"
+
+        if performance == "moderate":
+            if (
+                average_reps
+                < minimum
+            ):
+                return "maintain"
+
+            if (
+                self.rng.random()
+                < 0.25
+            ):
+                return "increase_reps"
+
+            return "maintain"
+
+        if performance == "good":
+            if (
+                rep_position
+                == "top_of_range"
+            ):
+                if (
+                    maximum >= rep_cap
+                    and not self._is_bodyweight(
+                        state
+                    )
+                ):
+                    return "increase_weight"
+
+                if (
+                    self._is_bodyweight(
+                        state
+                    )
+                ):
+                    return "increase_reps"
+
+                if (
+                    self.rng.random()
+                    < 0.72
+                ):
+                    return "increase_reps"
+
+                return "maintain"
+
+            if (
+                average_rir
+                > state.rir + 1.0
+            ):
+                if (
+                    self.rng.random()
+                    < 0.75
+                ):
+                    return "increase_reps"
+
+                return "maintain"
+
+            if (
+                self.rng.random()
+                < 0.80
+            ):
+                return "increase_reps"
+
+            return "maintain"
+
+        if performance == "excellent":
+            if (
+                rep_position
+                == "top_of_range"
+            ):
+                if (
+                    not self._is_bodyweight(
+                        state
+                    )
+                ):
+                    if (
+                        maximum >= rep_cap
+                    ):
+                        return "increase_weight"
+
+                    if (
+                        self.rng.random()
+                        < 0.78
+                    ):
+                        return "increase_weight"
+
+                return "increase_reps"
+
+            if (
+                self.rng.random()
+                < 0.70
+            ):
+                return "increase_reps"
+
+            return "maintain"
+
+        return "maintain"
+
+    def _acceptable_actions(
+        self,
+        performance: str,
+        rep_position: str,
+        state: ExerciseState,
+    ) -> set[str]:
+        bodyweight = self._is_bodyweight(
+            state
+        )
+
+        rep_cap = self._rep_cap(
+            state
+        )
+
+        if performance == "failure":
+            return {
+                "decrease",
+                "maintain",
+            }
+
+        if performance == "poor":
+            return {
+                "decrease",
+                "maintain",
+            }
+
+        if performance == "moderate":
+            return {
+                "maintain",
+                "increase_reps",
+            }
+
+        if performance == "good":
+            if (
+                rep_position
+                == "top_of_range"
+            ):
+                acceptable = {
+                    "increase_reps",
+                    "maintain",
+                }
+
+                if (
+                    not bodyweight
+                    and state.rep_range[1]
+                    >= rep_cap
+                ):
+                    acceptable.add(
+                        "increase_weight"
+                    )
+
+                return acceptable
+
+            return {
+                "increase_reps",
+                "maintain",
+            }
+
+        if performance == "excellent":
+            acceptable = {
+                "increase_reps",
+                "maintain",
+            }
+
+            if not bodyweight:
+                acceptable.add(
+                    "increase_weight"
+                )
+
+            return acceptable
+
+        return {"maintain"}
+
+    def _apply_action(
+        self,
+        state: ExerciseState,
+        action: str,
+    ) -> dict:
+        old_weight = state.weight
+        old_range = list(
+            state.rep_range
+        )
+
+        requested_action = action
+        applied_action = action
+
+        if (
+            action == "increase_weight"
+            and self._is_bodyweight(state)
+        ):
+            applied_action = (
+                "increase_reps"
+            )
+
+        if applied_action == "increase_weight":
+            increment = (
+                5.0
+                if state.weight >= 100.0
+                else 2.5
+            )
+
+            state.weight = round(
+                state.weight + increment,
+                2,
+            )
+
+            state.rep_range = list(
+                state.starting_rep_range
+            )
+
+        elif applied_action == "increase_reps":
+            low, high = (
+                state.rep_range
+            )
+
+            cap = self._rep_cap(
+                state
+            )
+
+            if high < cap:
+                new_low = min(
+                    low + 1,
+                    cap - 1,
+                )
+
+                new_high = min(
+                    high + 1,
+                    cap,
+                )
+
+                state.rep_range = [
+                    new_low,
+                    new_high,
+                ]
+
+        elif applied_action == "maintain":
+            state.weight = round(
+                state.weight,
+                2,
+            )
+
+        elif applied_action == "decrease":
+            if not self._is_bodyweight(
+                state
+            ):
+                reduction = (
+                    5.0
+                    if state.weight >= 100.0
+                    else 2.5
+                )
+
+                state.weight = max(
+                    0.0,
+                    round(
+                        state.weight
+                        - reduction,
+                        2,
+                    ),
+                )
+
+            state.rep_range = list(
+                state.starting_rep_range
+            )
+
+        return {
+            "requested_action": (
+                requested_action
+            ),
+            "applied_action": (
+                applied_action
+            ),
+            "old_weight": old_weight,
+            "new_weight": state.weight,
+            "old_range": old_range,
+            "new_range": list(
+                state.rep_range
+            ),
+        }
+
+    def _update_metrics(
+        self,
+        performance: str,
+        rep_position: str,
+        decision: str,
+        true_action: str,
+        state: ExerciseState,
+    ):
+        self.metrics.total_observations += 1
+
+        if decision == true_action:
+            self.metrics.correct_progressions += 1
+        else:
+            self.metrics.incorrect_progressions += 1
+
+        acceptable = self._acceptable_actions(
+            performance,
+            rep_position,
+            state,
+        )
+
+        if decision in acceptable:
+            self.metrics.acceptable_progressions += 1
+        else:
+            self.metrics.unacceptable_progressions += 1
+
+        if decision == "increase_weight":
+            self.metrics.increase_weight += 1
+        elif decision == "increase_reps":
+            self.metrics.increase_reps += 1
+        elif decision == "maintain":
+            self.metrics.maintain += 1
+        elif decision == "decrease":
+            self.metrics.decrease += 1
+
+        if performance == "excellent":
+            self.metrics.excellent += 1
+        elif performance == "good":
+            self.metrics.good += 1
+        elif performance == "moderate":
+            self.metrics.moderate += 1
+        elif performance == "poor":
+            self.metrics.poor += 1
+        elif performance == "failure":
+            self.metrics.failure += 1
+
+    def run(self):
+        generator = self._create_generator()
+        request = self._create_request()
+
+        workouts = generator.generate_program(
+            request
+        )
+
+        if not workouts:
+            raise RuntimeError(
+                "Workout generator produced no workouts."
+            )
+
+        print("=" * 80)
+        print("PROGRESSION SIMULATION")
+        print("=" * 80)
+        print(
+            f"Goal: {self.goal}"
+        )
+        print(
+            f"Experience: {self.experience}"
+        )
+        print(
+            f"Days/week: {self.days_per_week}"
+        )
+        print(
+            f"Split: {self.split}"
+        )
+        print(
+            f"Duration: "
+            f"{self.duration_minutes} minutes"
+        )
+        print(
+            f"Weeks: {self.weeks}"
+        )
+        print(
+            f"Seed: {self.seed}"
+        )
         print()
+
+        for week in range(
+            1,
+            self.weeks + 1,
+        ):
+            print(
+                f"Simulating week "
+                f"{week}/{self.weeks}..."
+            )
+
+            for workout in workouts:
+                self.athlete.start_session()
+
+                for exercise in workout.exercises:
+                    state = self._get_state(
+                        exercise
+                    )
+
+                    exercise_id = (
+                        state.exercise_id
+                    )
+
+                    previous_action = (
+                        self.previous_actions.get(
+                            exercise_id
+                        )
+                    )
+
+                    prescription = type(
+                        "Prescription",
+                        (),
+                        {
+                            "exercise_id": exercise_id,
+                            "weight": state.weight,
+                            "rep_range": list(
+                                state.rep_range
+                            ),
+                            "sets": state.sets,
+                            "rir": state.rir,
+                            "compound": state.compound,
+                        },
+                    )()
+
+                    actual_sets = (
+                        self.athlete.simulate(
+                            prescription,
+                            previous_action,
+                        )
+                    )
+
+                    recommendation = (
+                        self._recommend(
+                            state,
+                            actual_sets,
+                            previous_action,
+                        )
+                    )
+
+                    decision = (
+                        recommendation[
+                            "decision"
+                        ]
+                    )
+
+                    true_action = (
+                        self._true_action(
+                            recommendation[
+                                "performance"
+                            ],
+                            recommendation[
+                                "rep_position"
+                            ],
+                            state,
+                            actual_sets,
+                        )
+                    )
+
+                    self._update_metrics(
+                        recommendation[
+                            "performance"
+                        ],
+                        recommendation[
+                            "rep_position"
+                        ],
+                        decision,
+                        true_action,
+                        state,
+                    )
+
+                    progression = (
+                        self._apply_action(
+                            state,
+                            decision,
+                        )
+                    )
+
+                    self.previous_actions[
+                        exercise_id
+                    ] = progression[
+                        "applied_action"
+                    ]
+
+                    result = {
+                        "week": week,
+                        "training_day": (
+                            workout.training_day
+                        ),
+                        "workout": workout.name,
+                        "exercise": state.name,
+                        "exercise_id": exercise_id,
+                        "performance": (
+                            recommendation[
+                                "performance"
+                            ]
+                        ),
+                        "rep_position": (
+                            recommendation[
+                                "rep_position"
+                            ]
+                        ),
+                        "score": round(
+                            recommendation[
+                                "score"
+                            ],
+                            4,
+                        ),
+                        "decision": decision,
+                        "true_action": true_action,
+                        "decision_correct": (
+                            decision
+                            == true_action
+                        ),
+                        "decision_acceptable": (
+                            decision
+                            in self._acceptable_actions(
+                                recommendation[
+                                    "performance"
+                                ],
+                                recommendation[
+                                    "rep_position"
+                                ],
+                                state,
+                            )
+                        ),
+                        "confidence": round(
+                            recommendation[
+                                "confidence"
+                            ],
+                            4,
+                        ),
+                        "probability": round(
+                            recommendation[
+                                "probability"
+                            ],
+                            4,
+                        ),
+                        "probabilities": {
+                            key: round(
+                                value,
+                                4,
+                            )
+                            for key, value
+                            in recommendation[
+                                "probabilities"
+                            ].items()
+                        },
+                        "eligible_actions": (
+                            recommendation[
+                                "eligible_actions"
+                            ]
+                        ),
+                        "weight_before": (
+                            progression[
+                                "old_weight"
+                            ]
+                        ),
+                        "weight_after": (
+                            progression[
+                                "new_weight"
+                            ]
+                        ),
+                        "rep_range_before": (
+                            progression[
+                                "old_range"
+                            ]
+                        ),
+                        "rep_range_after": (
+                            progression[
+                                "new_range"
+                            ]
+                        ),
+                        "actual_sets": [
+                            asdict(result)
+                            for result in actual_sets
+                        ],
+                        "progression": progression,
+                    }
+
+                    state.history.append(
+                        result
+                    )
+
+                    self.results.append(
+                        result
+                    )
+
+        self._print_results()
+        self._save_results()
+
+        return self.results
+
+    def _print_results(self):
+        print()
+        print("=" * 80)
+        print("SIMULATION COMPLETE")
+        print("=" * 80)
+
         print(
-            f"DAY {workout.training_day}: "
-            f"{workout.name}"
+            f"Weeks simulated: "
+            f"{self.weeks}"
         )
 
         print(
-            f"Focus: {workout.focus}"
+            f"Workout sessions: "
+            f"{self.weeks * self.days_per_week}"
         )
 
         print(
-            f"Estimated: "
-            f"{workout.estimated_minutes} min"
+            f"Exercise observations: "
+            f"{len(self.results)}"
         )
 
+        print()
+        print("Progression Decisions")
         print("-" * 80)
 
-        for index, exercise in enumerate(
-            workout.exercises,
-            start=1,
-        ):
-            muscles = ", ".join(
-                exercise.target_muscles
-            )
-
-            equipment = ", ".join(
-                exercise.equipment
-            )
-
-            print(
-                f"{index}. "
-                f"{exercise.name}"
-            )
-
-            print(
-                f"   ID: {exercise.exercise_id} | "
-                f"Role: {exercise.role}"
-            )
-
-            print(
-                f"   Muscle: {muscles}"
-            )
-
-            print(
-                f"   Equipment: {equipment}"
-            )
-
-            print(
-                f"   Sets: {exercise.sets} | "
-                f"Reps: "
-                f"{exercise.rep_range[0]}-"
-                f"{exercise.rep_range[1]} | "
-                f"RIR: {exercise.rir}"
-            )
-
-
-def print_exercise_list(
-    simulation: Simulation,
-) -> None:
-    print_header(
-        "EXERCISES"
-    )
-
-    exercises = sorted(
-        simulation.exercise_states.values(),
-        key=lambda item: item.exercise_number,
-    )
-
-    for state in exercises:
         print(
-            f"{state.exercise_number:2d}. "
-            f"{state.name}"
-        )
-
-
-def show_exercise_progression(
-    simulation: Simulation,
-    exercise_number: int,
-) -> None:
-    selected = None
-
-    for state in (
-        simulation.exercise_states.values()
-    ):
-        if (
-            state.exercise_number
-            == exercise_number
-        ):
-            selected = state
-            break
-
-    if selected is None:
-        print(
-            "Exercise not found."
-        )
-        return
-
-    print_header(
-        selected.name
-    )
-
-    print(
-        f"Exercise ID:     "
-        f"{selected.exercise_id}"
-    )
-
-    print(
-        f"Exercise #:      "
-        f"{selected.exercise_number}"
-    )
-
-    print(
-        f"Starting Weight: "
-        f"{selected.starting_weight:.1f} lb"
-    )
-
-    print(
-        f"Final Weight:    "
-        f"{selected.current_weight:.1f} lb"
-    )
-
-    print(
-        f"Starting Reps:   "
-        f"{selected.starting_rep_range[0]}-"
-        f"{selected.starting_rep_range[1]}"
-    )
-
-    print(
-        f"Current Reps:    "
-        f"{selected.current_rep_range[0]}-"
-        f"{selected.current_rep_range[1]}"
-    )
-
-    print(
-        f"Target RIR:      "
-        f"{selected.target_rir:.1f}"
-    )
-
-    actions = Counter(
-        entry["decision"]
-        for entry in selected.history
-    )
-
-    print()
-    print(
-        "Progression Decisions"
-    )
-
-    print("-" * 80)
-
-    for action in [
-        "increase_weight",
-        "increase_reps",
-        "maintain",
-        "decrease",
-    ]:
-        print(
-            f"{action:<20}"
-            f"{actions.get(action, 0):>5}"
-        )
-
-    print()
-    print("Week History")
-    print("-" * 105)
-
-    print(
-        f"{'Week':>4} "
-        f"{'Weight':>9} "
-        f"{'Reps':>9} "
-        f"{'Avg RIR':>9} "
-        f"{'Outcome':<12} "
-        f"{'Action':<18}"
-    )
-
-    for entry in selected.history:
-        reps = (
-            f"{entry['prescribed_rep_range'][0]}-"
-            f"{entry['prescribed_rep_range'][1]}"
+            f"{'increase_weight':<25}"
+            f"{self.metrics.increase_weight}"
         )
 
         print(
-            f"{entry['week']:>4} "
-            f"{entry['prescribed_weight']:>9.1f} "
-            f"{reps:>9} "
-            f"{entry['average_rir']:>9.2f} "
-            f"{entry['outcome']:<12} "
-            f"{entry['decision']:<18}"
-        )
-
-
-def select_individual_exercise(
-    simulation: Simulation,
-) -> None:
-    print_exercise_list(
-        simulation
-    )
-
-    while True:
-        raw = input(
-            "Select exercise number "
-            "(or Enter to return): "
-        ).strip()
-
-        if not raw:
-            return
-
-        try:
-            number = int(raw)
-        except ValueError:
-            print(
-                "Invalid selection."
-            )
-            continue
-
-        show_exercise_progression(
-            simulation,
-            number,
-        )
-
-        input(
-            "\nPress Enter to return..."
-        )
-
-        return
-
-
-def print_simulation_summary(
-    results: dict[str, Any],
-) -> None:
-    print_header(
-        "SIMULATION COMPLETE"
-    )
-
-    print(
-        f"Weeks simulated: "
-        f"{results['weeks']}"
-    )
-
-    print(
-        f"Workout sessions: "
-        f"{results['workout_sessions']}"
-    )
-
-    print(
-        f"Exercise observations: "
-        f"{results['exercise_observations']}"
-    )
-
-    print()
-    print(
-        "Progression Decisions"
-    )
-
-    print("-" * 80)
-
-    decisions = results[
-        "progression_decisions"
-    ]
-
-    for action in [
-        "increase_weight",
-        "increase_reps",
-        "maintain",
-        "decrease",
-    ]:
-        print(
-            f"{action:<20}"
-            f"{decisions.get(action, 0):>5}"
-        )
-
-    print()
-    print(
-        "Performance Outcomes"
-    )
-
-    print("-" * 80)
-
-    outcomes = results[
-        "performance_outcomes"
-    ]
-
-    for outcome in [
-        "excellent",
-        "good",
-        "moderate",
-        "poor",
-        "failure",
-    ]:
-        print(
-            f"{outcome:<20}"
-            f"{outcomes.get(outcome, 0):>5}"
-        )
-
-    print()
-    print(
-        "Global Bayesian State"
-    )
-
-    print("-" * 80)
-
-    state = results[
-        "global_state"
-    ]
-
-    for action in [
-        "increase_weight",
-        "increase_reps",
-        "maintain",
-        "decrease",
-    ]:
-        action_state = state.get(
-            action,
-            {},
-        )
-
-        probability = action_state.get(
-            "probability",
-            action_state.get(
-                "success_probability",
-                0.0,
-            ),
-        )
-
-        evidence = action_state.get(
-            "evidence",
-            0.0,
+            f"{'increase_reps':<25}"
+            f"{self.metrics.increase_reps}"
         )
 
         print(
-            f"{action:<20}"
-            f"P(success)={probability:.3f} "
-            f"evidence={evidence:.1f}"
+            f"{'maintain':<25}"
+            f"{self.metrics.maintain}"
         )
 
-    print()
-    print(
-        "Exercise Progression"
-    )
-
-    print("-" * 80)
-
-    exercises = results[
-        "exercise_progression"
-    ]
-
-    ordered = sorted(
-        exercises.values(),
-        key=lambda item: (
-            item["exercise_number"]
-        ),
-    )
-
-    for exercise in ordered:
         print(
-            f"{exercise['exercise_number']:2d} "
-            f"-> {results['weeks']:>2} | "
-            f"{exercise['exercise_id']:<40} "
-            f"{exercise['starting_weight']:>8.1f} "
-            f"-> "
-            f"{exercise['final_weight']:>8.1f} lb"
+            f"{'decrease':<25}"
+            f"{self.metrics.decrease}"
         )
 
-
-def save_results(
-    results: dict[str, Any],
-) -> Path:
-    RESULTS_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    result_file = (
-        RESULTS_DIR
-        / "simulation_results.json"
-    )
-
-    with result_file.open(
-        "w",
-        encoding="utf-8",
-    ) as file:
-        json.dump(
-            results,
-            file,
-            indent=2,
-        )
-
-    return result_file
-
-
-def interactive_menu(
-    simulation: Simulation,
-    results: dict[str, Any],
-) -> None:
-    while True:
         print()
-        print("=" * 80)
-        print(
-            "SIMULATION MENU"
-        )
-        print("=" * 80)
+        print("Performance Outcomes")
+        print("-" * 80)
 
         print(
-            "1. View generated workout"
+            f"{'excellent':<25}"
+            f"{self.metrics.excellent}"
         )
 
         print(
-            "2. View all exercises"
+            f"{'good':<25}"
+            f"{self.metrics.good}"
         )
 
         print(
-            "3. View individual "
-            "exercise progression"
+            f"{'moderate':<25}"
+            f"{self.metrics.moderate}"
         )
 
         print(
-            "4. View simulation summary"
+            f"{'poor':<25}"
+            f"{self.metrics.poor}"
         )
 
         print(
-            "5. Exit"
+            f"{'failure':<25}"
+            f"{self.metrics.failure}"
         )
 
-        choice = input(
-            "Select: "
-        ).strip()
+        print()
+        print("Model Accuracy")
+        print("-" * 80)
 
-        if choice == "1":
-            print_program(
-                simulation.program
-            )
+        print(
+            f"Correct decisions: "
+            f"{self.metrics.correct_progressions}"
+        )
 
-        elif choice == "2":
-            print_exercise_list(
-                simulation
-            )
+        print(
+            f"Incorrect decisions: "
+            f"{self.metrics.incorrect_progressions}"
+        )
 
-        elif choice == "3":
-            select_individual_exercise(
-                simulation
-            )
+        print(
+            f"Exact decision accuracy: "
+            f"{self.metrics.decision_accuracy:.2%}"
+        )
 
-        elif choice == "4":
-            print_simulation_summary(
-                results
-            )
+        print(
+            f"Acceptable decisions: "
+            f"{self.metrics.acceptable_progressions}"
+        )
 
-        elif choice == "5":
-            return
+        print(
+            f"Unacceptable decisions: "
+            f"{self.metrics.unacceptable_progressions}"
+        )
 
-        else:
+        print(
+            f"Acceptable decision accuracy: "
+            f"{self.metrics.acceptable_accuracy:.2%}"
+        )
+
+        print()
+        print("Exercise Progression")
+        print("-" * 80)
+
+        for state in sorted(
+            self.exercise_states.values(),
+            key=lambda item:
+                item.name.lower(),
+        ):
             print(
-                "Invalid selection."
+                f"{state.name}: "
+                f"{state.starting_weight:.1f} -> "
+                f"{state.weight:.1f} | "
+                f"{state.starting_rep_range} -> "
+                f"{state.rep_range}"
             )
 
+    def _save_results(self):
+        RESULTS_DIR.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
-def confirm_configuration() -> bool:
-    print()
-    print(
-        "1. Run simulation"
-    )
+        output = {
+            "configuration": {
+                "weeks": self.weeks,
+                "seed": self.seed,
+                "goal": self.goal,
+                "experience": self.experience,
+                "days_per_week": (
+                    self.days_per_week
+                ),
+                "split": self.split,
+                "duration_minutes": (
+                    self.duration_minutes
+                ),
+            },
+            "metrics": {
+                "total_observations": (
+                    self.metrics.total_observations
+                ),
+                "correct_progressions": (
+                    self.metrics.correct_progressions
+                ),
+                "incorrect_progressions": (
+                    self.metrics.incorrect_progressions
+                ),
+                "decision_accuracy": (
+                    self.metrics.decision_accuracy
+                ),
+                "acceptable_progressions": (
+                    self.metrics.acceptable_progressions
+                ),
+                "unacceptable_progressions": (
+                    self.metrics.unacceptable_progressions
+                ),
+                "acceptable_accuracy": (
+                    self.metrics.acceptable_accuracy
+                ),
+                "increase_weight": (
+                    self.metrics.increase_weight
+                ),
+                "increase_reps": (
+                    self.metrics.increase_reps
+                ),
+                "maintain": (
+                    self.metrics.maintain
+                ),
+                "decrease": (
+                    self.metrics.decrease
+                ),
+                "excellent": (
+                    self.metrics.excellent
+                ),
+                "good": (
+                    self.metrics.good
+                ),
+                "moderate": (
+                    self.metrics.moderate
+                ),
+                "poor": (
+                    self.metrics.poor
+                ),
+                "failure": (
+                    self.metrics.failure
+                ),
+            },
+            "results": self.results,
+            "exercise_states": {
+                key: asdict(value)
+                for key, value
+                in self.exercise_states.items()
+            },
+        }
 
-    print(
-        "2. Reconfigure"
-    )
+        result_path = (
+            RESULTS_DIR
+            / "progression_simulation.json"
+        )
 
-    print(
-        "3. Exit"
-    )
+        result_path.write_text(
+            json.dumps(
+                output,
+                indent=2,
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
 
-    while True:
-        choice = input(
-            "Select: "
-        ).strip()
-
-        if choice == "1":
-            return True
-
-        if choice == "2":
-            return False
-
-        if choice == "3":
-            raise SystemExit(0)
-
+        print()
         print(
-            "Invalid selection."
+            f"Results saved to: "
+            f"{result_path}"
         )
 
 
-def main() -> None:
-    while True:
-        request, weeks, seed = (
-            build_request()
-        )
-
-        try:
-            preview = Simulation(
-                request=request,
-                weeks=weeks,
-                seed=seed,
-            )
-        except Exception as exc:
-            print()
-            print(
-                "Workout generation failed."
-            )
-            print(
-                f"{type(exc).__name__}: "
-                f"{exc}"
-            )
-            input(
-                "Press Enter to return..."
-            )
-            continue
-
-        print_configuration(
-            request,
-            weeks,
-            seed,
-        )
-
-        print_program(
-            preview.program
-        )
-
-        if confirm_configuration():
-            break
-
-    print_header(
-        "RUNNING BAYESIAN SIMULATION"
+def main():
+    simulation = ProgressionSimulation(
+        weeks=12,
+        seed=42,
+        goal="hypertrophy",
+        experience="intermediate",
+        days_per_week=4,
+        split="upper_lower",
+        duration_minutes=60,
     )
 
-    print(
-        f"Simulating {weeks} weeks..."
-    )
-
-    simulation = Simulation(
-        request=request,
-        weeks=weeks,
-        seed=seed,
-    )
-
-    results = simulation.run()
-
-    result_file = save_results(
-        results
-    )
-
-    print_simulation_summary(
-        results
-    )
-
-    print()
-    print(
-        "Global state: "
-        f"{BASE_DIR / 'global_bayesian_state.json'}"
-    )
-
-    print(
-        "Local state: "
-        f"{BASE_DIR / 'local_bayesian_state.json'}"
-    )
-
-    print(
-        "Simulation results: "
-        f"{result_file}"
-    )
-
-    interactive_menu(
-        simulation,
-        results,
-    )
+    simulation.run()
 
 
 if __name__ == "__main__":
