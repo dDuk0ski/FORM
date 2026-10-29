@@ -225,7 +225,14 @@ questions has an answer in the repo yet.
 
 1. **(Austen) Nutrient tables.** When do `nutrients`, `food_nutrients` (per 100 g, null = unknown
    with `is_known`), the `food_macros` view and `search_foods(query, limit <= 25)` land, and what is
-   their exact shape? None of them is in any migration.
+   their exact shape? None of them is in any migration. The app currently assumes the following;
+   please confirm each:
+   - Each nutrient comes back as one value that is null when `is_known = false`. If it is a
+     separate value plus a flag, the app will map it to null.
+   - Calories (`kcal`) are their own nutrient and may be unknown, not always computed from
+     protein, carbs and fat.
+   - Values are per 100 g, in kcal and grams.
+   - Unknown is per nutrient, not per food: carbs can be known while protein is unknown.
 2. **(Austen) Row owner.** `food_logs.user_id` is `NOT NULL` with no default
    (`20261022210543_add_foods_and_food_logs.sql`), but the app never sends a user id. Add
    `DEFAULT auth.uid()`, or confirm another approach.
@@ -243,5 +250,7 @@ questions has an answer in the repo yet.
    response does not match `src/types/api.ts` (see the table under "Status as of Oct 29"). Should it
    read a `food_log_entries` view (not in any migration yet)? How are the day and the timezone
    defined? How are unknown values returned? Errors should be `{ error: { code, message } }`.
+   The Home screen currently reads `consumed` and `remaining` from /today as plain numbers, so the
+   answer on unknown values decides whether Home needs a change.
 7. **(Team) Sign-in.** Who builds sign-in, and how? The real Supabase `FoodService` is blocked on it;
    the app has no sign-in screen.
