@@ -216,3 +216,32 @@ Still open:
 7. **Missing serving.** `serving_label` and `serving_g` are nullable. Is every seeded food guaranteed
    to have both?
 8. **Errors.** Which error body should the app expect from FastAPI (`{ detail }` now)?
+
+## Open questions (Oct 29)
+
+Joey owns the backend and API; Austen owns the database. Each question says who it is for. The
+facts come from `main` at `16b5729` and `backend-initial-setup` at `40b0c41`; none of these
+questions has an answer in the repo yet.
+
+1. **(Austen) Nutrient tables.** When do `nutrients`, `food_nutrients` (per 100 g, null = unknown
+   with `is_known`), the `food_macros` view and `search_foods(query, limit <= 25)` land, and what is
+   their exact shape? None of them is in any migration.
+2. **(Austen) Row owner.** `food_logs.user_id` is `NOT NULL` with no default
+   (`20261022210543_add_foods_and_food_logs.sql`), but the app never sends a user id. Add
+   `DEFAULT auth.uid()`, or confirm another approach.
+3. **(Austen) Hard delete.** Soft delete is in place (`deleted_at`, from
+   `20261029170735_add_food_log_serving_and_soft_delete.sql`). The `DELETE` grant
+   (`20261023220022_add_authenticated_food_grants.sql`) and the "Users can delete their own food
+   logs" policy (`20261022211716_add_foods_food_logs_rls.sql`) are still there. Should they stay or
+   be removed?
+4. **(Austen) Allowed values.** `meal` and `source` are plain `VARCHAR` with no `CHECK`. Confirm the
+   allowed values (meal: breakfast / lunch / dinner / snack; source: manual / barcode / recipe /
+   predicted) and add the `CHECK` constraints.
+5. **(Damjan / Austen) Seed data.** Is the seed file of about 50 foods available, and where?
+   `supabase/config.toml` turns seeding on, but there is no seed file in the repo.
+6. **(Joey) `GET /today`.** It reads `targets` and `daily_records`, not `food_logs`, and its
+   response does not match `src/types/api.ts` (see the table under "Status as of Oct 29"). Should it
+   read a `food_log_entries` view (not in any migration yet)? How are the day and the timezone
+   defined? How are unknown values returned? Errors should be `{ error: { code, message } }`.
+7. **(Team) Sign-in.** Who builds sign-in, and how? The real Supabase `FoodService` is blocked on it;
+   the app has no sign-in screen.
