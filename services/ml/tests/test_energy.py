@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+import numpy as np
 import pytest
 
 from form_ml.energy import (
@@ -13,6 +14,7 @@ from form_ml.energy import (
     resting_rate,
     trend_weights,
 )
+from form_ml.synthetic import random_user, simulate
 
 PROFILE = Profile(sex="male", age=30, height_cm=180, weight_kg=80, activity_level="moderate")
 
@@ -68,3 +70,17 @@ def test_new_user_gets_formula_estimate():
     estimate = estimate_tdee(PROFILE, days([2400.0] * 5, [80.0] * 5))
     assert estimate.source == "formula"
     assert estimate.tdee_kcal == pytest.approx(formula_tdee(PROFILE, 80.0))
+
+
+def test_converges_to_users_real_burn_in_logged_units():
+    rng = np.random.default_rng(3)
+    errors = []
+    for _ in range(40):
+        user = random_user(rng)
+        run = simulate(user, 56, rng)
+        estimate = estimate_tdee(user.profile, run.records)
+        assert estimate.source == "adaptive"
+        # The model learns burn in the units the user logs in, so compare against that.
+        target = np.mean(run.true_tdee_kcal[-28:]) * (1 - user.logging_bias)
+        errors.append(abs(estimate.tdee_kcal - target))
+    assert np.mean(errors) < 150
