@@ -39,15 +39,17 @@ export function ServingSelector({ servings, selectedId, onSelect }: ServingSelec
             onPress={() => onSelect(serving.id)}
             style={({ pressed }) => ({
               paddingVertical: spacing.sm,
-              paddingHorizontal: spacing.md,
-              borderRadius: radii.md,
+              paddingHorizontal: spacing.lg,
+              borderRadius: radii.pill,
               borderWidth: 1,
-              borderColor: selected ? colors.primary : colors.border,
-              backgroundColor: selected ? colors.primary : colors.surface,
+              borderColor: selected ? colors.primarySoftBorder : colors.chipBorder,
+              backgroundColor: selected ? colors.primarySoft : colors.surface,
               opacity: pressed ? 0.8 : 1,
             })}
           >
-            <Text style={[typography.label, { color: selected ? colors.onPrimary : colors.text }]}>
+            <Text
+              style={[typography.label, { color: selected ? colors.onPrimarySoft : colors.text }]}
+            >
               {serving.label}
             </Text>
           </Pressable>

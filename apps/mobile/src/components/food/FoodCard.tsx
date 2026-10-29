@@ -25,7 +25,7 @@ export function FoodCard({ food, onPress }: FoodCardProps) {
       onPress={() => onPress(food)}
       style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
     >
-      <Card>
+      <Card variant="soft">
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
           <View style={{ flex: 1, gap: spacing.xs / 2 }}>
             <Text style={[typography.label, { color: colors.text }]}>{food.name}</Text>

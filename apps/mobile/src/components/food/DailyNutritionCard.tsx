@@ -2,8 +2,17 @@ import { Text, View } from 'react-native';
 
 import { Card, ProgressBar } from '@/components';
 import { formatGrams, formatKcal, targetProgress } from '@/lib/nutrition';
-import { useTheme } from '@/theme';
+import { useTheme, type ColorTokens } from '@/theme';
 import type { Macros } from '@/types/api';
+
+type MacroTone = 'calories' | 'protein' | 'carbs' | 'fat';
+
+const toneDot: Record<MacroTone, keyof ColorTokens> = {
+  calories: 'progressGood',
+  protein: 'macroProtein',
+  carbs: 'macroCarbs',
+  fat: 'macroFat',
+};
 
 type DailyNutritionCardProps = {
   /** Sum of today's logged entries. */
@@ -20,10 +29,11 @@ type MacroRowProps = {
   target: number | undefined;
   unit: string;
   format: (value: number) => string;
+  tone: MacroTone;
 };
 
-function MacroProgressRow({ label, consumed, target, unit, format }: MacroRowProps) {
-  const { colors, spacing, typography } = useTheme();
+function MacroProgressRow({ label, consumed, target, unit, format, tone }: MacroRowProps) {
+  const { colors, spacing, radii, typography } = useTheme();
   const progress = targetProgress(consumed, target);
   const over = progress !== null && progress > 1;
   const amount =
@@ -34,7 +44,17 @@ function MacroProgressRow({ label, consumed, target, unit, format }: MacroRowPro
   return (
     <View style={{ gap: spacing.xs }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={[typography.label, { color: colors.text }]}>{label}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <View
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: radii.pill,
+              backgroundColor: colors[toneDot[tone]],
+            }}
+          />
+          <Text style={[typography.label, { color: colors.text }]}>{label}</Text>
+        </View>
         <Text
           style={[
             typography.label,
@@ -45,7 +65,7 @@ function MacroProgressRow({ label, consumed, target, unit, format }: MacroRowPro
         </Text>
       </View>
       {progress !== null ? (
-        <ProgressBar fraction={progress} accessibilityLabel={`${label} progress`} />
+        <ProgressBar fraction={progress} accessibilityLabel={`${label} progress`} tone={tone} />
       ) : null}
     </View>
   );
@@ -55,7 +75,7 @@ function MacroProgressRow({ label, consumed, target, unit, format }: MacroRowPro
 export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutritionCardProps) {
   const { colors, spacing, typography } = useTheme();
   return (
-    <Card style={{ gap: spacing.md }}>
+    <Card variant="soft" style={{ gap: spacing.md }}>
       <Text accessibilityRole="header" style={[typography.heading, { color: colors.text }]}>
         Nutrition
       </Text>
@@ -65,6 +85,7 @@ export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutrit
         target={targets?.kcal}
         unit="kcal"
         format={formatKcal}
+        tone="calories"
       />
       <MacroProgressRow
         label="Protein"
@@ -72,6 +93,7 @@ export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutrit
         target={targets?.protein_g}
         unit="g"
         format={formatGrams}
+        tone="protein"
       />
       <MacroProgressRow
         label="Carbs"
@@ -79,6 +101,7 @@ export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutrit
         target={targets?.carb_g}
         unit="g"
         format={formatGrams}
+        tone="carbs"
       />
       <MacroProgressRow
         label="Fat"
@@ -86,6 +109,7 @@ export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutrit
         target={targets?.fat_g}
         unit="g"
         format={formatGrams}
+        tone="fat"
       />
       {targetsNote ? (
         <Text style={[typography.caption, { color: colors.textMuted }]}>{targetsNote}</Text>

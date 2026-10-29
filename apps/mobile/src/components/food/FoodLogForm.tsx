@@ -105,7 +105,7 @@ export function FoodLogForm({ food }: { food: Food }) {
         : `${formatGrams(saved.grams)} g`;
     return (
       <View accessibilityLiveRegion="polite">
-        <Card>
+        <Card variant="soft">
           <Text accessibilityRole="header" style={[typography.heading, { color: colors.success }]}>
             Added to your log
           </Text>
@@ -173,6 +173,7 @@ export function FoodLogForm({ food }: { food: Food }) {
         title={logFood.isPending ? 'Adding…' : logFood.isError ? 'Try again' : 'Add to log'}
         onPress={onAdd}
         disabled={amount === null || logFood.isPending}
+        variant="soft"
       />
     </View>
   );

@@ -10,7 +10,7 @@ type NutritionPreviewProps = {
 /** What the entry will add to today, scaled to the chosen serving and amount. */
 export function NutritionPreview({ macros }: NutritionPreviewProps) {
   return (
-    <Card>
+    <Card variant="soft">
       <Row label="Calories" value={macros ? `${formatKcal(macros.kcal)} kcal` : '–'} />
       <Row label="Protein" value={macros ? `${formatGrams(macros.protein_g)} g` : '–'} />
       <Row label="Carbs" value={macros ? `${formatGrams(macros.carb_g)} g` : '–'} />

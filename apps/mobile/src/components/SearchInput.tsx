@@ -8,6 +8,8 @@ type SearchInputProps = {
   placeholder?: string;
   accessibilityLabel?: string;
   autoFocus?: boolean;
+  /** "soft" is the Figma pill-shaped search field; the default is unchanged. */
+  variant?: 'default' | 'soft';
 };
 
 export function SearchInput({
@@ -16,16 +18,18 @@ export function SearchInput({
   placeholder = 'Search',
   accessibilityLabel = 'Search',
   autoFocus = false,
+  variant = 'default',
 }: SearchInputProps) {
   const { colors, spacing, radii, typography } = useTheme();
+  const soft = variant === 'soft';
   return (
     <View
       style={{
         borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: radii.md,
+        borderColor: soft ? colors.chipBorder : colors.border,
+        borderRadius: soft ? radii.pill : radii.md,
         backgroundColor: colors.surface,
-        paddingHorizontal: spacing.md,
+        paddingHorizontal: soft ? spacing.lg : spacing.md,
       }}
     >
       <TextInput

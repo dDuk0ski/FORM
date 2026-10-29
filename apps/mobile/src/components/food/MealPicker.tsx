@@ -31,16 +31,19 @@ export function MealPicker({ selected, onSelect }: MealPickerProps) {
               onPress={() => onSelect(meal)}
               style={({ pressed }) => ({
                 paddingVertical: spacing.sm,
-                paddingHorizontal: spacing.md,
-                borderRadius: radii.md,
+                paddingHorizontal: spacing.lg,
+                borderRadius: radii.pill,
                 borderWidth: 1,
-                borderColor: isSelected ? colors.primary : colors.border,
-                backgroundColor: isSelected ? colors.primary : colors.surface,
+                borderColor: isSelected ? colors.primarySoftBorder : colors.chipBorder,
+                backgroundColor: isSelected ? colors.primarySoft : colors.surface,
                 opacity: pressed ? 0.8 : 1,
               })}
             >
               <Text
-                style={[typography.label, { color: isSelected ? colors.onPrimary : colors.text }]}
+                style={[
+                  typography.label,
+                  { color: isSelected ? colors.onPrimarySoft : colors.text },
+                ]}
               >
                 {mealLabel(meal)}
               </Text>

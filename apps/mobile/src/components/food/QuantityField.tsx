@@ -26,26 +26,34 @@ export function QuantityField({
 }: QuantityFieldProps) {
   const { colors, spacing, radii, typography } = useTheme();
 
-  const stepButton = (direction: -1 | 1, disabled: boolean) => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${direction < 0 ? 'Decrease' : 'Increase'} ${label}`}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={() => onStep(direction)}
-      style={{
-        width: 44,
-        height: 44,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: radii.md,
-        backgroundColor: colors.surfaceMuted,
-        opacity: disabled ? 0.4 : 1,
-      }}
-    >
-      <Text style={[typography.heading, { color: colors.text }]}>{direction < 0 ? '−' : '+'}</Text>
-    </Pressable>
-  );
+  // Figma steppers: minus is an outlined circle, plus is a filled navy circle.
+  const stepButton = (direction: -1 | 1, disabled: boolean) => {
+    const plus = direction > 0;
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${direction < 0 ? 'Decrease' : 'Increase'} ${label}`}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={() => onStep(direction)}
+        style={{
+          width: 44,
+          height: 44,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: radii.pill,
+          borderWidth: 1,
+          borderColor: plus ? colors.stepper : colors.chipBorder,
+          backgroundColor: plus ? colors.stepper : colors.surface,
+          opacity: disabled ? 0.4 : 1,
+        }}
+      >
+        <Text style={[typography.heading, { color: plus ? colors.stepperText : colors.text }]}>
+          {direction < 0 ? '−' : '+'}
+        </Text>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={{ gap: spacing.xs }}>
@@ -67,8 +75,8 @@ export function QuantityField({
               color: colors.text,
               backgroundColor: colors.surface,
               borderWidth: 1,
-              borderColor: error ? colors.danger : colors.border,
-              borderRadius: radii.md,
+              borderColor: error ? colors.danger : colors.chipBorder,
+              borderRadius: radii.pill,
               paddingHorizontal: spacing.md,
             },
           ]}

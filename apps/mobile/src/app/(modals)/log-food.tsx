@@ -27,10 +27,11 @@ export default function LogFoodModal() {
         onChangeText={setQuery}
         placeholder="Search foods"
         accessibilityLabel="Search foods"
+        variant="soft"
       />
       <SearchResults query={debouncedQuery} onSelect={openFood} />
       <TodayNutrition />
-      <Button title="Close" variant="secondary" onPress={() => router.back()} />
+      <Button title="Close" variant="softOutline" onPress={() => router.back()} />
     </Screen>
   );
 }

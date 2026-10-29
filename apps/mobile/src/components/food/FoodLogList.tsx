@@ -19,7 +19,7 @@ type FoodLogListProps = {
 export function FoodLogList({ entries, onRemove, removingId = null }: FoodLogListProps) {
   const { colors, spacing, typography } = useTheme();
   return (
-    <Card style={{ gap: spacing.md }}>
+    <Card variant="soft" style={{ gap: spacing.md }}>
       <Text accessibilityRole="header" style={[typography.heading, { color: colors.text }]}>
         Logged today
       </Text>

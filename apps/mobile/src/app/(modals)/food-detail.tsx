@@ -31,7 +31,7 @@ export default function FoodDetailModal() {
           message="This food isn’t available. Go back and search again."
         />
       )}
-      <Button title="Back to search" variant="secondary" onPress={() => router.back()} />
+      <Button title="Back to search" variant="softOutline" onPress={() => router.back()} />
     </Screen>
   );
 }
