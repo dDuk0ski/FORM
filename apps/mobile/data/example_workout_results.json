@@ -1,8 +1,0 @@
-{
-  "workout_id": "example_workout",
-  "completed": true,
-  "exercises": [],
-  "recovery_score": null,
-  "adherence_score": null,
-  "notes": "Example result schema. Populate this with real workout results after the user completes a workout."
-}
