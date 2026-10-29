@@ -5,6 +5,9 @@ Rules (deliberately simple, each one a number to tune later):
   maintain = 0; gain = 300 kcal surplus.
 - Floor: never below the resting rate, as a conservative stand-in for an energy-availability check
   (that check needs fat-free mass, which we do not collect).
+- Units: the adaptive TDEE is in the user's *logged* calories, which differ from real calories
+  when someone under- or over-logs. The two safety limits (floor and loss cap) are computed in
+  real calories, so they are scaled into logged units by estimate / formula before use.
 - Protein 1.8 g per kg body weight (inside the 1.6-2.2 g/kg range for resistance training).
 - Fat 25% of calories; carbohydrate takes the rest.
 """
@@ -21,6 +24,9 @@ Goal = Literal["lose", "maintain", "gain"]
 DEFICIT_KCAL = 500.0
 SURPLUS_KCAL = 300.0
 MAX_WEEKLY_LOSS_FRACTION = 0.01
+# Bounds on the logged-to-real scale, so one bad stretch of data cannot collapse the safety limits.
+MIN_UNIT_SCALE = 0.6
+MAX_UNIT_SCALE = 1.4
 PROTEIN_G_PER_KG = 1.8
 FAT_FRACTION = 0.25
 
@@ -36,9 +42,15 @@ class Targets:
     rationale: str
 
 
-def goal_offset(goal: Goal, weight_kg: float) -> float:
+def unit_scale(estimate: TdeeEstimate) -> float:
+    """Logged calories per real calorie, as far as the model can tell (1.0 for the formula)."""
+    scale = estimate.tdee_kcal / estimate.formula_kcal
+    return min(MAX_UNIT_SCALE, max(MIN_UNIT_SCALE, scale))
+
+
+def goal_offset(goal: Goal, weight_kg: float, scale: float = 1.0) -> float:
     if goal == "lose":
-        max_daily_deficit = MAX_WEEKLY_LOSS_FRACTION * weight_kg * KCAL_PER_KG / 7
+        max_daily_deficit = MAX_WEEKLY_LOSS_FRACTION * weight_kg * KCAL_PER_KG / 7 * scale
         return -min(DEFICIT_KCAL, max_daily_deficit)
     if goal == "gain":
         return SURPLUS_KCAL
@@ -60,8 +72,9 @@ def rationale(estimate: TdeeEstimate) -> str:
 
 def daily_targets(profile: Profile, goal: Goal, estimate: TdeeEstimate) -> Targets:
     weight = estimate.trend_weight_kg or profile.weight_kg
-    floor = resting_rate(profile.sex, weight, profile.height_cm, profile.age)
-    kcal = max(floor, estimate.tdee_kcal + goal_offset(goal, weight))
+    scale = unit_scale(estimate)
+    floor = resting_rate(profile.sex, weight, profile.height_cm, profile.age) * scale
+    kcal = max(floor, estimate.tdee_kcal + goal_offset(goal, weight, scale))
 
     protein_g = PROTEIN_G_PER_KG * weight
     fat_g = FAT_FRACTION * kcal / 9

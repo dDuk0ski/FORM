@@ -40,6 +40,11 @@ from day 28 of history on:
 | Adaptive, trend-difference slope | 0.163 kg | 0.162 kg |
 | Adaptive, regression slope (default) | 0.110 kg | 0.108 kg |
 
+Closed-loop check (`tests/test_closed_loop.py`): synthetic users who eat at the model's targets
+with a lose goal lose a median 0.55% of body weight a week (5th-95th percentile 0.30-0.71%).
+Targets are in the user's logged calories, so the safety floor and the 1%-a-week loss cap are
+scaled into those units first. Without that scaling, 26% of under-logging users barely lost weight.
+
 The smoothed trend lags real change for the first couple of weeks, so the observed burn uses a
 least-squares slope of the raw weigh-ins instead. The smoothed trend is still the weight to show
 users.

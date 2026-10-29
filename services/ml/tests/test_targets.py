@@ -1,7 +1,7 @@
 import pytest
 
 from form_ml.energy import Profile, TdeeEstimate, resting_rate
-from form_ml.targets import daily_targets, goal_offset
+from form_ml.targets import daily_targets, goal_offset, unit_scale
 
 PROFILE = Profile(sex="male", age=30, height_cm=180, weight_kg=80, activity_level="moderate")
 
@@ -35,9 +35,26 @@ def test_targets_follow_goal_and_macro_rules():
     assert t.target_source == "adaptive"
 
 
-def test_never_below_resting_rate():
-    t = daily_targets(PROFILE, "lose", estimate(tdee=1900))
+def test_never_below_resting_rate_on_the_formula():
+    # Formula estimate: logged and real units are the same, so the floor is the resting rate.
+    low = estimate(tdee=1900, source="formula")
+    low = TdeeEstimate(**{**low.__dict__, "formula_kcal": 1900.0})
+    t = daily_targets(PROFILE, "lose", low)
     assert t.kcal == round(resting_rate("male", 80, 180, 30))
+
+
+def test_floor_is_scaled_into_logged_units():
+    # Observed burn is 70% of the formula (e.g. under-logging): the floor scales the same way,
+    # instead of pinning targets at a real-calorie floor the user can never log down to.
+    est = TdeeEstimate(**{**estimate(tdee=1400).__dict__, "formula_kcal": 2000.0})
+    t = daily_targets(PROFILE, "lose", est)
+    assert t.kcal == round(resting_rate("male", 80, 180, 30) * 0.7)
+    assert t.kcal < round(resting_rate("male", 80, 180, 30))
+
+
+def test_unit_scale_is_bounded():
+    wild = TdeeEstimate(**{**estimate(tdee=800).__dict__, "formula_kcal": 2800.0})
+    assert unit_scale(wild) == 0.6
 
 
 def test_rationale_lines():
