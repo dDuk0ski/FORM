@@ -4,6 +4,7 @@ export { FoodCard } from './FoodCard';
 export { FoodLogForm } from './FoodLogForm';
 export { FoodLogList } from './FoodLogList';
 export { MacroLine } from './MacroLine';
+export { MealPicker } from './MealPicker';
 export { NutritionPreview } from './NutritionPreview';
 export { QuantityField } from './QuantityField';
 export { SearchResults } from './SearchResults';

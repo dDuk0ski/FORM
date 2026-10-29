@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 
+import { CUSTOM_SERVING_ID } from '@/lib/nutrition';
 import { useTheme } from '@/theme';
 import type { ServingOption } from '@/types/food';
 
@@ -9,16 +10,25 @@ type ServingSelectorProps = {
   onSelect: (servingId: string) => void;
 };
 
-/** Pick how the food is measured: "1 medium (118 g)", "100 g", ... */
+type Choice = { id: string; label: string };
+
+/**
+ * Pick how the food is measured: its default serving, e.g. "1 medium (118 g)", or "Custom
+ * grams" to type an exact weight. Custom grams is always offered, as the team agreed.
+ */
 export function ServingSelector({ servings, selectedId, onSelect }: ServingSelectorProps) {
   const { colors, spacing, radii, typography } = useTheme();
+  const choices: Choice[] = [
+    ...servings.map((serving) => ({ id: serving.id, label: serving.label })),
+    { id: CUSTOM_SERVING_ID, label: 'Custom grams' },
+  ];
   return (
     <View
       accessibilityRole="radiogroup"
       accessibilityLabel="Serving size"
       style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}
     >
-      {servings.map((serving) => {
+      {choices.map((serving) => {
         const selected = serving.id === selectedId;
         return (
           <Pressable

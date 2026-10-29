@@ -1,11 +1,16 @@
 import {
   EMPTY_MACROS,
-  buildLogEntry,
+  buildCustomGramsLog,
+  buildServingLog,
+  defaultMeal,
   formatGrams,
   formatKcal,
   formatQuantity,
+  hydrateLogEntry,
   macrosForServing,
+  mealLabel,
   newEntryId,
+  parseGrams,
   parseQuantity,
   scaleMacros,
   servingGrams,
@@ -101,8 +106,8 @@ describe('sumMacros', () => {
   });
 
   it('equals the sum of the entries it is built from', () => {
-    const a = buildLogEntry(entryInput('a', piece, 1));
-    const b = buildLogEntry(entryInput('b', hundred, 2));
+    const a = hydrateLogEntry(servingLog('a', piece, 1), food);
+    const b = hydrateLogEntry(servingLog('b', hundred, 2), food);
     expect(sumMacros([a.nutrients, b.nutrients])).toEqual({
       kcal: 80 + 400,
       protein_g: 4 + 20,
@@ -165,23 +170,101 @@ describe('targetProgress', () => {
   });
 });
 
-describe('buildLogEntry', () => {
-  it('snapshots food, serving, grams and calculated nutrients', () => {
-    expect(buildLogEntry(entryInput('le_1', piece, 1.5))).toEqual({
-      id: 'le_1',
+describe('parseGrams', () => {
+  it('accepts whole and decimal grams', () => {
+    expect(parseGrams('100')).toEqual({ ok: true, value: 100 });
+    expect(parseGrams(' 62,5 ')).toEqual({ ok: true, value: 62.5 });
+    expect(parseGrams('.5')).toEqual({ ok: false, error: 'Amount must be at least 1 g.' });
+  });
+
+  it('rejects empty, non-numeric, too small and too large amounts', () => {
+    expect(parseGrams('')).toEqual({ ok: false, error: 'Enter an amount.' });
+    expect(parseGrams('abc').ok).toBe(false);
+    expect(parseGrams('1e3').ok).toBe(false);
+    expect(parseGrams('0').ok).toBe(false);
+    expect(parseGrams('5000').ok).toBe(true);
+    expect(parseGrams('5000.1').ok).toBe(false);
+  });
+});
+
+describe('buildServingLog', () => {
+  it('stores food id, grams and the serving, with no name or nutrient copies', () => {
+    expect(buildServingLog(logInput('11111111-1111-4111-8111-111111111111', piece, 1.5))).toEqual({
+      id: '11111111-1111-4111-8111-111111111111',
       food_id: 'f_test',
-      food_name: 'Test food',
-      date: '2026-10-16',
       logged_at: '2026-10-16T14:30:00.000Z',
+      grams: 60,
+      meal: 'lunch',
+      source: 'manual',
       serving_label: '1 piece (40 g)',
       serving_quantity: 1.5,
-      grams: 60,
-      nutrients: { kcal: 120, protein_g: 6, carb_g: 12, fat_g: 3 },
     });
   });
 
   it('never includes a user id', () => {
-    expect(Object.keys(buildLogEntry(entryInput('le_1', piece, 1)))).not.toContain('user_id');
+    expect(Object.keys(buildServingLog(logInput('x', piece, 1)))).not.toContain('user_id');
+  });
+});
+
+describe('buildCustomGramsLog', () => {
+  it('stores the grams with no serving', () => {
+    expect(
+      buildCustomGramsLog({
+        id: 'x',
+        food,
+        grams: 62.54,
+        loggedAt: '2026-10-16T14:30:00.000Z',
+        meal: 'snack',
+      }),
+    ).toEqual({
+      id: 'x',
+      food_id: 'f_test',
+      logged_at: '2026-10-16T14:30:00.000Z',
+      grams: 62.5,
+      meal: 'snack',
+      source: 'manual',
+      serving_label: null,
+      serving_quantity: null,
+    });
+  });
+});
+
+describe('hydrateLogEntry', () => {
+  it('joins the food name and calculates nutrients from the grams', () => {
+    const entry = hydrateLogEntry(servingLog('le_1', piece, 1.5), food);
+    expect(entry).toMatchObject({
+      id: 'le_1',
+      food_id: 'f_test',
+      food_name: 'Test food',
+      grams: 60,
+      meal: 'lunch',
+      source: 'manual',
+      serving_label: '1 piece (40 g)',
+      serving_quantity: 1.5,
+      nutrients: { kcal: 120, protein_g: 6, carb_g: 12, fat_g: 3 },
+    });
+  });
+
+  it('derives the local day from logged_at', () => {
+    const noon = new Date(2026, 9, 16, 12, 0, 0).toISOString();
+    const log = { ...servingLog('le_1', piece, 1), logged_at: noon };
+    expect(hydrateLogEntry(log, food).date).toBe('2026-10-16');
+  });
+
+  it('scales custom grams the same way', () => {
+    const log = buildCustomGramsLog({
+      id: 'x',
+      food,
+      grams: 150,
+      loggedAt: '2026-10-16T14:30:00.000Z',
+      meal: 'dinner',
+    });
+    expect(hydrateLogEntry(log, food).nutrients).toEqual({
+      kcal: 300,
+      protein_g: 15,
+      carb_g: 30,
+      fat_g: 7.5,
+    });
   });
 });
 
@@ -189,6 +272,27 @@ describe('newEntryId', () => {
   it('returns a different id every time', () => {
     const ids = new Set(Array.from({ length: 1000 }, () => newEntryId()));
     expect(ids.size).toBe(1000);
+  });
+
+  it('returns a valid version 4 UUID, because food_logs.id is a uuid column', () => {
+    for (let index = 0; index < 50; index += 1) {
+      expect(newEntryId()).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      );
+    }
+  });
+});
+
+describe('meals', () => {
+  it('suggests a meal from the hour of day', () => {
+    expect(defaultMeal(new Date(2026, 9, 16, 8))).toBe('breakfast');
+    expect(defaultMeal(new Date(2026, 9, 16, 12))).toBe('lunch');
+    expect(defaultMeal(new Date(2026, 9, 16, 18))).toBe('dinner');
+    expect(defaultMeal(new Date(2026, 9, 16, 23))).toBe('snack');
+  });
+
+  it('capitalizes meal labels', () => {
+    expect(mealLabel('breakfast')).toBe('Breakfast');
   });
 });
 
@@ -210,13 +314,17 @@ describe('formatting', () => {
   });
 });
 
-function entryInput(id: string, serving: typeof piece, quantity: number) {
+function logInput(id: string, serving: typeof piece, quantity: number) {
   return {
     id,
     food,
     serving,
     quantity,
-    date: '2026-10-16',
     loggedAt: '2026-10-16T14:30:00.000Z',
+    meal: 'lunch' as const,
   };
+}
+
+function servingLog(id: string, serving: typeof piece, quantity: number) {
+  return buildServingLog(logInput(id, serving, quantity));
 }

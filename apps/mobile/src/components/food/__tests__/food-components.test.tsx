@@ -10,7 +10,7 @@ import { FoodLogList } from '@/components/food/FoodLogList';
 import { SearchResults } from '@/components/food/SearchResults';
 import { TodayNutrition } from '@/components/food/TodayNutrition';
 import { todayLocal } from '@/lib/dates';
-import { buildLogEntry } from '@/lib/nutrition';
+import { buildCustomGramsLog, buildServingLog, hydrateLogEntry } from '@/lib/nutrition';
 import { foodsFixture } from '@/mocks/foods';
 import { createWrapper } from '@/test-utils/providers';
 
@@ -72,9 +72,54 @@ describe('FoodLogForm', () => {
     fireEvent.changeText(screen.getByLabelText('Servings'), '1.5');
     expect(screen.getByText('158 kcal')).toBeOnTheScreen(); // 177 g x 0.89
     expect(screen.getByText('177 g in total')).toBeOnTheScreen();
+  });
 
-    fireEvent.press(screen.getByRole('radio', { name: '100 g' }));
+  it('offers custom grams, starting at 100 g, and scales from the grams typed', () => {
+    renderWithProviders(<FoodLogForm food={banana} />);
+    fireEvent.press(screen.getByRole('radio', { name: 'Custom grams' }));
+    expect(screen.getByLabelText('Grams').props.value).toBe('100');
+    expect(screen.getByText('89 kcal')).toBeOnTheScreen();
+    expect(screen.getByText('100 g in total')).toBeOnTheScreen();
+
+    fireEvent.changeText(screen.getByLabelText('Grams'), '150');
     expect(screen.getByText('134 kcal')).toBeOnTheScreen(); // 150 g x 0.89 = 133.5
+
+    fireEvent.press(screen.getByRole('button', { name: 'Increase Grams' }));
+    expect(screen.getByLabelText('Grams').props.value).toBe('160');
+
+    fireEvent.changeText(screen.getByLabelText('Grams'), '0');
+    expect(screen.getByRole('button', { name: 'Add to log' })).toBeDisabled();
+  });
+
+  it('goes back to servings, starting at 1 serving', () => {
+    renderWithProviders(<FoodLogForm food={banana} />);
+    fireEvent.press(screen.getByRole('radio', { name: 'Custom grams' }));
+    fireEvent.press(screen.getByRole('radio', { name: '1 medium (118 g)' }));
+    expect(screen.getByLabelText('Servings').props.value).toBe('1');
+    expect(screen.getByText('105 kcal')).toBeOnTheScreen();
+  });
+
+  it('suggests a meal and lets the person change it', () => {
+    renderWithProviders(<FoodLogForm food={banana} />);
+    fireEvent.press(screen.getByRole('radio', { name: 'Dinner' }));
+    expect(screen.getByRole('radio', { name: 'Dinner', checked: true })).toBeOnTheScreen();
+  });
+
+  it('saves the chosen meal and custom grams, with no serving', async () => {
+    renderWithProviders(<FoodLogForm food={banana} />);
+    fireEvent.press(screen.getByRole('radio', { name: 'Dinner' }));
+    fireEvent.press(screen.getByRole('radio', { name: 'Custom grams' }));
+    fireEvent.changeText(screen.getByLabelText('Grams'), '150');
+    fireEvent.press(screen.getByRole('button', { name: 'Add to log' }));
+    expect(await screen.findByText('Added to your log')).toBeOnTheScreen();
+    const [saved] = await foodService.listLogEntries(todayLocal());
+    expect(saved).toMatchObject({
+      meal: 'dinner',
+      source: 'manual',
+      grams: 150,
+      serving_label: null,
+      serving_quantity: null,
+    });
   });
 
   it('steps the amount with the plus and minus buttons', () => {
@@ -168,14 +213,17 @@ describe('DailyNutritionCard', () => {
 });
 
 describe('FoodLogList', () => {
-  const entry = buildLogEntry({
-    id: 'le_1',
-    food: banana,
-    serving: banana.servings[0]!,
-    quantity: 1.5,
-    date: '2026-10-16',
-    loggedAt: '2026-10-16T12:00:00.000Z',
-  });
+  const entry = hydrateLogEntry(
+    buildServingLog({
+      id: 'le_1',
+      food: banana,
+      serving: banana.servings[0]!,
+      quantity: 1.5,
+      loggedAt: '2026-10-16T12:00:00.000Z',
+      meal: 'breakfast',
+    }),
+    banana,
+  );
 
   it('invites the first entry when empty', () => {
     renderWithProviders(<FoodLogList entries={[]} />);
@@ -189,5 +237,20 @@ describe('FoodLogList', () => {
     expect(screen.getByText('1.5 × 1 medium (118 g)')).toBeOnTheScreen();
     fireEvent.press(screen.getByRole('button', { name: 'Remove Banana, raw' }));
     expect(onRemove).toHaveBeenCalledWith('le_1');
+  });
+
+  it('shows grams for an entry logged as custom grams', () => {
+    const custom = hydrateLogEntry(
+      buildCustomGramsLog({
+        id: 'le_2',
+        food: banana,
+        grams: 150,
+        loggedAt: '2026-10-16T12:00:00.000Z',
+        meal: 'snack',
+      }),
+      banana,
+    );
+    renderWithProviders(<FoodLogList entries={[custom]} />);
+    expect(screen.getByText('150 g')).toBeOnTheScreen();
   });
 });

@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 
 import { Card } from '@/components';
-import { formatKcal, formatQuantity } from '@/lib/nutrition';
+import { formatGrams, formatKcal, formatQuantity } from '@/lib/nutrition';
 import { useTheme } from '@/theme';
 import type { FoodLogEntry } from '@/types/food';
 
@@ -36,7 +36,9 @@ export function FoodLogList({ entries, onRemove, removingId = null }: FoodLogLis
             <View style={{ flex: 1, gap: spacing.xs / 2 }}>
               <Text style={[typography.label, { color: colors.text }]}>{entry.food_name}</Text>
               <Text style={[typography.caption, { color: colors.textMuted }]}>
-                {formatQuantity(entry.serving_quantity)} × {entry.serving_label}
+                {entry.serving_quantity !== null && entry.serving_label !== null
+                  ? `${formatQuantity(entry.serving_quantity)} × ${entry.serving_label}`
+                  : `${formatGrams(entry.grams)} g`}
               </Text>
               <MacroLine macros={entry.nutrients} />
             </View>

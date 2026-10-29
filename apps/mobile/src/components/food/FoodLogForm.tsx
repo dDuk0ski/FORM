@@ -4,46 +4,60 @@ import { Text, View } from 'react-native';
 import { Button, Card } from '@/components';
 import { useLogFood } from '@/hooks/useFoodLog';
 import { errorMessage } from '@/lib/errors';
-import { nowUtcIso, todayLocal } from '@/lib/dates';
+import { nowUtcIso } from '@/lib/dates';
 import {
+  CUSTOM_SERVING_ID,
   MAX_QUANTITY,
+  MAX_TOTAL_GRAMS,
+  MIN_GRAMS,
   MIN_QUANTITY,
-  buildLogEntry,
+  buildCustomGramsLog,
+  buildServingLog,
+  defaultMeal,
   defaultServing,
   formatGrams,
   formatKcal,
   formatQuantity,
-  macrosForServing,
   newEntryId,
+  parseGrams,
   parseQuantity,
+  round1,
+  scaleMacros,
   servingGrams,
 } from '@/lib/nutrition';
 import { useTheme } from '@/theme';
-import type { Food } from '@/types/food';
+import type { Food, MealType } from '@/types/food';
 
+import { MealPicker } from './MealPicker';
 import { NutritionPreview } from './NutritionPreview';
 import { QuantityField } from './QuantityField';
 import { ServingSelector } from './ServingSelector';
 
 const QUANTITY_STEP = 0.5;
+const GRAMS_STEP = 10;
+const DEFAULT_CUSTOM_GRAMS = '100';
 
 /**
- * Choose a serving and amount for one food, preview the scaled nutrition, and add it to
- * today's log. After a successful save the form is replaced by a confirmation.
+ * Choose a meal, a serving (or custom grams) and an amount for one food, preview the scaled
+ * nutrition, and add it to today's log. After a successful save the form is replaced by a
+ * confirmation.
  */
 export function FoodLogForm({ food }: { food: Food }) {
   const { colors, spacing, typography } = useTheme();
   const logFood = useLogFood();
   const [servingId, setServingId] = useState(() => defaultServing(food).id);
   const [quantityText, setQuantityText] = useState('1');
+  const [meal, setMeal] = useState<MealType>(() => defaultMeal());
   // One id per form, so a retry after a failed save cannot create a duplicate entry.
   const [entryId] = useState(newEntryId);
 
   const servings = food.servings.length > 0 ? food.servings : [defaultServing(food)];
+  const isCustom = servingId === CUSTOM_SERVING_ID;
   const serving = servings.find((option) => option.id === servingId) ?? defaultServing(food);
-  const parsed = parseQuantity(quantityText, serving);
-  const quantity = parsed.ok ? parsed.value : null;
-  const preview = quantity === null ? null : macrosForServing(food, serving, quantity);
+  const parsed = isCustom ? parseGrams(quantityText) : parseQuantity(quantityText, serving);
+  const amount = parsed.ok ? parsed.value : null;
+  const grams = amount === null ? null : isCustom ? round1(amount) : servingGrams(serving, amount);
+  const preview = grams === null ? null : scaleMacros(food.macros_per_100g, grams);
 
   const clearSaveError = () => {
     if (logFood.isError) {
@@ -51,30 +65,44 @@ export function FoodLogForm({ food }: { food: Food }) {
     }
   };
 
+  const onSelectServing = (id: string) => {
+    clearSaveError();
+    if ((id === CUSTOM_SERVING_ID) !== isCustom) {
+      // The amount means servings in one mode and grams in the other, so start fresh.
+      setQuantityText(id === CUSTOM_SERVING_ID ? DEFAULT_CUSTOM_GRAMS : '1');
+    }
+    setServingId(id);
+  };
+
   const onStep = (direction: -1 | 1) => {
     clearSaveError();
-    const next = (quantity ?? 1) + direction * QUANTITY_STEP;
+    if (isCustom) {
+      const next = (amount ?? Number(DEFAULT_CUSTOM_GRAMS)) + direction * GRAMS_STEP;
+      setQuantityText(formatGrams(Math.min(MAX_TOTAL_GRAMS, Math.max(MIN_GRAMS, next))));
+      return;
+    }
+    const next = (amount ?? 1) + direction * QUANTITY_STEP;
     setQuantityText(formatQuantity(Math.min(MAX_QUANTITY, Math.max(MIN_QUANTITY, next))));
   };
 
   const onAdd = () => {
-    if (quantity === null || logFood.isPending) {
+    if (amount === null || logFood.isPending) {
       return;
     }
+    const base = { id: entryId, food, loggedAt: nowUtcIso(), meal };
     logFood.mutate(
-      buildLogEntry({
-        id: entryId,
-        food,
-        serving,
-        quantity,
-        date: todayLocal(),
-        loggedAt: nowUtcIso(),
-      }),
+      isCustom
+        ? buildCustomGramsLog({ ...base, grams: amount })
+        : buildServingLog({ ...base, serving, quantity: amount }),
     );
   };
 
   if (logFood.isSuccess) {
     const saved = logFood.data;
+    const eaten =
+      saved.serving_quantity !== null && saved.serving_label !== null
+        ? `${formatQuantity(saved.serving_quantity)} × ${saved.serving_label}`
+        : `${formatGrams(saved.grams)} g`;
     return (
       <View accessibilityLiveRegion="polite">
         <Card>
@@ -83,8 +111,7 @@ export function FoodLogForm({ food }: { food: Food }) {
           </Text>
           <Text style={[typography.body, { color: colors.text }]}>{saved.food_name}</Text>
           <Text style={[typography.caption, { color: colors.textMuted }]}>
-            {formatQuantity(saved.serving_quantity)} × {saved.serving_label},{' '}
-            {formatKcal(saved.nutrients.kcal)} kcal
+            {eaten}, {formatKcal(saved.nutrients.kcal)} kcal
           </Text>
         </Card>
       </View>
@@ -102,17 +129,22 @@ export function FoodLogForm({ food }: { food: Food }) {
         ) : null}
       </View>
 
-      <ServingSelector
-        servings={servings}
-        selectedId={serving.id}
-        onSelect={(id) => {
+      <MealPicker
+        selected={meal}
+        onSelect={(next) => {
           clearSaveError();
-          setServingId(id);
+          setMeal(next);
         }}
       />
 
+      <ServingSelector
+        servings={servings}
+        selectedId={isCustom ? CUSTOM_SERVING_ID : serving.id}
+        onSelect={onSelectServing}
+      />
+
       <QuantityField
-        label="Servings"
+        label={isCustom ? 'Grams' : 'Servings'}
         value={quantityText}
         onChangeText={(text) => {
           clearSaveError();
@@ -120,12 +152,12 @@ export function FoodLogForm({ food }: { food: Food }) {
         }}
         onStep={onStep}
         error={parsed.ok ? null : parsed.error}
-        decrementDisabled={quantity !== null && quantity <= MIN_QUANTITY}
-        incrementDisabled={quantity !== null && quantity >= MAX_QUANTITY}
+        decrementDisabled={amount !== null && amount <= (isCustom ? MIN_GRAMS : MIN_QUANTITY)}
+        incrementDisabled={amount !== null && amount >= (isCustom ? MAX_TOTAL_GRAMS : MAX_QUANTITY)}
       />
-      {quantity !== null ? (
+      {grams !== null ? (
         <Text style={[typography.caption, { color: colors.textMuted }]}>
-          {formatGrams(servingGrams(serving, quantity))} g in total
+          {formatGrams(grams)} g in total
         </Text>
       ) : null}
 
@@ -140,7 +172,7 @@ export function FoodLogForm({ food }: { food: Food }) {
       <Button
         title={logFood.isPending ? 'Adding…' : logFood.isError ? 'Try again' : 'Add to log'}
         onPress={onAdd}
-        disabled={quantity === null || logFood.isPending}
+        disabled={amount === null || logFood.isPending}
       />
     </View>
   );

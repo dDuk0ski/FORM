@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { foodService } from '@/api/foods';
 import { sumMacros } from '@/lib/nutrition';
 import type { IsoDate } from '@/types/api';
-import type { FoodLogEntry } from '@/types/food';
+import type { FoodLogEntry, NewFoodLog } from '@/types/food';
 
 export const foodLogKey = (date: IsoDate) => ['food-log', date] as const;
 const FOOD_LOG_ROOT = ['food-log'] as const;
@@ -41,11 +41,12 @@ export function useDailyNutrition(date: IsoDate) {
  * Save a log entry. On success the cached log is updated immediately (so totals change
  * without waiting for a refetch), then the log and ML /today queries are invalidated.
  * Callers should disable their button while `isPending`; the entry id makes a retry safe.
+ * Resolves to the saved entry joined to its food (name and calculated nutrients).
  */
 export function useLogFood() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (entry: FoodLogEntry) => foodService.addLogEntry(entry),
+    mutationFn: (log: NewFoodLog) => foodService.addLogEntry(log),
     onSuccess: (saved) => {
       queryClient.setQueryData<FoodLogEntry[]>(foodLogKey(saved.date), (current) =>
         current === undefined

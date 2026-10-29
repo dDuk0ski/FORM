@@ -7,13 +7,13 @@ to the real backend; see `BACKEND_HANDOFF.md`.
 
 1. Open the **Log food** modal (`router.push('/log-food')`) and search. Results appear after 2+
    characters, with calories and macros for the default serving.
-2. Tap a result to open **Add food** (`/food-detail`). Pick a serving, enter or step the amount,
-   see the scaled nutrition, and tap **Add to log**.
+2. Tap a result to open **Add food** (`/food-detail`). Pick a meal, choose the food's serving or
+   **Custom grams**, enter or step the amount, see the scaled nutrition, and tap **Add to log**.
 3. Back in Log food, **Nutrition** and **Logged today** update immediately. Entries can be removed.
 4. Close and reopen the app: the log is still there (stored on this device only).
 
 Every screen handles loading, empty, no-results, invalid-input, success and error states.
-Amounts must be 0.1 to 100 servings and at most 5000 g per entry.
+Amounts must be 0.1 to 100 servings, or 1 to 5000 g for custom grams.
 
 ## On the Today tab
 
@@ -24,7 +24,7 @@ Known mismatch while the ML service is mocked: the cards above it (`Eaten`, `Cal
 from `GET /today`, which returns a fixed fixture, so they do not move when you log food. The
 `Nutrition` card is computed from the log and does. Once the backend is real and `GET /today`
 reads the same food logs, the two should agree. Until then, expect two different "eaten" numbers
-on this screen, and decide with the team which one the demo shows (question 4 in
+on this screen, and decide with the team which one the demo shows (question 2 in
 `BACKEND_HANDOFF.md`).
 
 ## How it is built
@@ -32,7 +32,7 @@ on this screen, and decide with the team which one the demo shows (question 4 in
 ```
 src/app/(modals)/log-food.tsx        search screen
 src/app/(modals)/food-detail.tsx     serving + amount + add
-src/components/food/                 FoodCard, ServingSelector, QuantityField, NutritionPreview,
+src/components/food/                 FoodCard, MealPicker, ServingSelector, QuantityField, NutritionPreview,
                                      DailyNutritionCard, FoodLogList, SearchResults, FoodLogForm,
                                      TodayNutrition, DataSourceNotice, MacroLine
 src/components/                      + SearchInput, ProgressBar, StateViews (shared, exported from the barrel)
@@ -47,6 +47,23 @@ src/types/food.ts                    provisional frontend types
 Rules followed: screens never call `fetch`, Supabase or AsyncStorage; colors come from the theme;
 grams internally; UTC timestamps; no `user_id` anywhere on the client. Daily totals are always
 the sum of the day's entries, never stored separately.
+
+## How a log entry is stored (matches the agreed `food_logs` design)
+
+A saved log row holds only: `id` (UUID made on the device), `food_id`, `logged_at`, `grams`,
+`meal`, `source`, `serving_label`, `serving_quantity` and `deleted_at`. There is no food name, no
+nutrient copy and no date column. The screens show an entry by joining the row to its food
+(`hydrateLogEntry`): the name comes from the food, the nutrients are calculated from the food's
+per-100 g values, and the day is the local day of `logged_at`. Removing an entry sets
+`deleted_at` (a soft delete), and lists and totals skip those rows.
+
+Custom grams are saved with `serving_label` and `serving_quantity` set to null.
+
+The mock log is stored under the key `form.mock.food_log.v2`. Entries saved on a device by the
+earlier build (`v1`) are not read and not deleted; they simply no longer appear.
+
+Not built yet: showing unknown nutrients as "unknown". The sample foods have every value, and the
+real nutrient shape is not in the repo yet.
 
 ## Changes to shared files (Mason: please glance at these)
 
