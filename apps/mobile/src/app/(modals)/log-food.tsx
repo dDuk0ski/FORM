@@ -1,9 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Screen, SearchInput } from '@/components';
 import { DataSourceNotice, SearchResults, TodayNutrition } from '@/components/food';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useTheme } from '@/theme';
 import type { Food } from '@/types/food';
 
 // Food search and logging. Open with router.push('/log-food'); close with router.back().
@@ -15,6 +18,8 @@ import type { Food } from '@/types/food';
 export default function LogFoodModal() {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, 250);
+  const { spacing } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const openFood = (food: Food) =>
     router.push({ pathname: '/food-detail', params: { id: food.id } });
@@ -31,7 +36,10 @@ export default function LogFoodModal() {
       />
       <SearchResults query={debouncedQuery} onSelect={openFood} />
       <TodayNutrition />
-      <Button title="Close" variant="softOutline" onPress={() => router.back()} />
+      {/* Keep the last button clear of the home indicator. */}
+      <View style={{ paddingBottom: Math.max(insets.bottom, spacing.lg) }}>
+        <Button title="Close" variant="softOutline" onPress={() => router.back()} />
+      </View>
     </Screen>
   );
 }
