@@ -1,11 +1,15 @@
 import {
   EMPTY_MACROS,
+  EMPTY_TOTALS,
   buildCustomGramsLog,
   buildServingLog,
   defaultMeal,
   formatGrams,
   formatKcal,
+  formatNutrient,
+  formatNutrientTotal,
   formatQuantity,
+  formatTotalAgainstTarget,
   hydrateLogEntry,
   macrosForServing,
   mealLabel,
@@ -13,8 +17,10 @@ import {
   parseGrams,
   parseQuantity,
   scaleMacros,
+  scaleNutrient,
   servingGrams,
   sumMacros,
+  sumNutrient,
   targetProgress,
 } from '@/lib/nutrition';
 import type { Food } from '@/types/food';
@@ -82,9 +88,12 @@ describe('servings', () => {
   });
 });
 
+/** A total where every contributing entry was known. */
+const known = (value: number) => ({ value, hasUnknown: false });
+
 describe('sumMacros', () => {
   it('is zero for an empty list', () => {
-    expect(sumMacros([])).toEqual(EMPTY_MACROS);
+    expect(sumMacros([])).toEqual(EMPTY_TOTALS);
   });
 
   it('adds each nutrient', () => {
@@ -93,7 +102,7 @@ describe('sumMacros', () => {
         { kcal: 100, protein_g: 5, carb_g: 10, fat_g: 2 },
         { kcal: 50, protein_g: 1, carb_g: 3, fat_g: 4 },
       ]),
-    ).toEqual({ kcal: 150, protein_g: 6, carb_g: 13, fat_g: 6 });
+    ).toEqual({ kcal: known(150), protein_g: known(6), carb_g: known(13), fat_g: known(6) });
   });
 
   it('does not leak floating point noise', () => {
@@ -101,18 +110,127 @@ describe('sumMacros', () => {
       { kcal: 0.1, protein_g: 0.1, carb_g: 0.1, fat_g: 0.1 },
       { kcal: 0.2, protein_g: 0.2, carb_g: 0.2, fat_g: 0.2 },
     ]);
-    expect(total.kcal).toBe(0.3);
-    expect(total.protein_g).toBe(0.3);
+    expect(total.kcal.value).toBe(0.3);
+    expect(total.protein_g.value).toBe(0.3);
   });
 
   it('equals the sum of the entries it is built from', () => {
     const a = hydrateLogEntry(servingLog('a', piece, 1), food);
     const b = hydrateLogEntry(servingLog('b', hundred, 2), food);
     expect(sumMacros([a.nutrients, b.nutrients])).toEqual({
-      kcal: 80 + 400,
-      protein_g: 4 + 20,
-      carb_g: 8 + 40,
-      fat_g: 2 + 10,
+      kcal: known(80 + 400),
+      protein_g: known(4 + 20),
+      carb_g: known(8 + 40),
+      fat_g: known(2 + 10),
+    });
+  });
+});
+
+// Test-only food: protein is unknown (null). Not sample data, so it never reaches the app.
+const unknownProteinFood: Food = {
+  id: 'f_test_unknown',
+  name: 'Food with unknown protein',
+  brand: null,
+  macros_per_100g: { kcal: 100, protein_g: null, carb_g: 20, fat_g: 1 },
+  servings: [{ id: '100g', label: '100 g', grams: 100 }],
+};
+
+describe('unknown nutrients', () => {
+  it('keeps an unknown value null when scaling, never 0', () => {
+    expect(scaleNutrient(null, 150)).toBeNull();
+    expect(scaleMacros(unknownProteinFood.macros_per_100g, 250)).toEqual({
+      kcal: 250,
+      protein_g: null,
+      carb_g: 50,
+      fat_g: 2.5,
+    });
+  });
+
+  it('keeps an unknown value null even for zero grams', () => {
+    expect(scaleNutrient(null, 0)).toBeNull();
+  });
+
+  it('totals all-known values with no unknown flag', () => {
+    expect(sumNutrient([1, 2.5])).toEqual({ value: 3.5, hasUnknown: false });
+  });
+
+  it('totals known values only when some are unknown, and flags the total as partial', () => {
+    expect(sumNutrient([10, null, 5])).toEqual({ value: 15, hasUnknown: true });
+  });
+
+  it('has no value at all when every entry is unknown', () => {
+    expect(sumNutrient([null, null])).toEqual({ value: null, hasUnknown: true });
+  });
+
+  it('never counts a log of an unknown-protein food as 0 in the totals', () => {
+    const unknownEntry = hydrateLogEntry(
+      buildCustomGramsLog({
+        id: 'u',
+        food: unknownProteinFood,
+        grams: 200,
+        loggedAt: '2026-10-16T12:00:00.000Z',
+        meal: 'lunch',
+      }),
+      unknownProteinFood,
+    );
+    // The mock service joins logs with hydrateLogEntry, so the null passes through untouched.
+    expect(unknownEntry.nutrients.protein_g).toBeNull();
+
+    const knownEntry = hydrateLogEntry(servingLog('k', hundred, 1), food);
+    const totals = sumMacros([unknownEntry.nutrients, knownEntry.nutrients]);
+    expect(totals.protein_g).toEqual({ value: 10, hasUnknown: true });
+    expect(totals.kcal).toEqual(known(200 + 200));
+    expect(sumMacros([unknownEntry.nutrients]).protein_g).toEqual({
+      value: null,
+      hasUnknown: true,
+    });
+  });
+});
+
+describe('formatNutrient', () => {
+  it('shows a known value with its unit', () => {
+    expect(formatNutrient(105.4, 'kcal')).toEqual({
+      text: '105 kcal',
+      accessibilityLabel: '105 calories',
+    });
+    expect(formatNutrient(1.25, 'g')).toEqual({ text: '1.3 g', accessibilityLabel: '1.3 grams' });
+  });
+
+  it('shows a known zero as 0', () => {
+    expect(formatNutrient(0, 'g').text).toBe('0 g');
+  });
+
+  it('shows an unknown value as a dash, read as "unknown"', () => {
+    expect(formatNutrient(null, 'g')).toEqual({ text: '—', accessibilityLabel: 'unknown' });
+    expect(formatNutrient(null, 'kcal')).toEqual({ text: '—', accessibilityLabel: 'unknown' });
+  });
+
+  it('marks a partial total with a plus', () => {
+    expect(formatNutrientTotal({ value: 120, hasUnknown: true }, 'g')).toEqual({
+      text: '120 g+',
+      accessibilityLabel: 'at least 120 grams, some entries unknown',
+    });
+  });
+
+  it('shows a total with nothing known as a dash, not a partial 0', () => {
+    expect(formatNutrientTotal({ value: null, hasUnknown: true }, 'g')).toEqual({
+      text: '—',
+      accessibilityLabel: 'unknown',
+    });
+  });
+
+  it('formats a total against its target, marking partial and unknown totals', () => {
+    expect(formatTotalAgainstTarget(known(105), 2680, 'kcal')).toEqual({
+      text: '105 / 2680 kcal',
+      accessibilityLabel: '105 calories, target 2680 calories',
+    });
+    expect(formatTotalAgainstTarget({ value: 120, hasUnknown: true }, 175, 'g')).toEqual({
+      text: '120+ / 175 g',
+      accessibilityLabel: 'at least 120 grams, some entries unknown, target 175 grams',
+    });
+    expect(formatTotalAgainstTarget({ value: null, hasUnknown: true }, 175, 'g')).toEqual({
+      text: '— / 175 g',
+      accessibilityLabel: 'unknown, target 175 grams',
     });
   });
 });

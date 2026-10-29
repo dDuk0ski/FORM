@@ -1,4 +1,4 @@
-import type { FoodId, IsoDate, IsoDateTime, Macros } from '@/types/api';
+import type { FoodId, IsoDate, IsoDateTime } from '@/types/api';
 
 // FRONTEND-ONLY, PROVISIONAL types for food search and food logging.
 //
@@ -13,6 +13,38 @@ import type { FoodId, IsoDate, IsoDateTime, Macros } from '@/types/api';
 /** Where food data comes from. "mock" until the real food API is wired in. */
 export type FoodDataSource = 'mock' | 'api';
 
+/**
+ * One nutrient amount. Null means unknown (the team's `is_known = false`), never 0, so an
+ * unknown value is never shown as 0 or added to a total as 0.
+ */
+export type NutrientValue = number | null;
+
+/**
+ * Calories and macros for the food layer, where any value may be unknown. Deliberately not
+ * `Macros` from types/api.ts: that type is shared with GET /today (targets, Home), which
+ * stays all-number.
+ */
+export interface FoodMacros {
+  kcal: NutrientValue;
+  protein_g: NutrientValue;
+  carb_g: NutrientValue;
+  fat_g: NutrientValue;
+}
+
+export type MacroKey = keyof FoodMacros;
+
+/**
+ * A daily total for one macro. `value` is the sum of the known values; it is null when
+ * there were entries but none had this macro known. `hasUnknown` is true when any entry
+ * had this macro unknown, so the total is only a lower bound ("partial").
+ */
+export interface NutrientTotal {
+  value: number | null;
+  hasUnknown: boolean;
+}
+
+export type MacroTotals = Record<MacroKey, NutrientTotal>;
+
 /** The food's default serving, e.g. "1 medium (118 g)". Custom grams is always available too. */
 export interface ServingOption {
   id: string;
@@ -25,8 +57,8 @@ export interface Food {
   id: FoodId;
   name: string;
   brand: string | null;
-  /** Nutrients for 100 g. Everything is scaled from this. */
-  macros_per_100g: Macros;
+  /** Nutrients for 100 g; null where unknown. Everything is scaled from this. */
+  macros_per_100g: FoodMacros;
   /** The default serving (the first one). Agreed plan: one per food, plus custom grams. */
   servings: ServingOption[];
 }
@@ -78,6 +110,6 @@ export interface FoodLogEntry {
   serving_label: string | null;
   serving_quantity: number | null;
   grams: number;
-  /** Calculated from the food's per-100 g nutrients and `grams`. */
-  nutrients: Macros;
+  /** Calculated from the food's per-100 g nutrients and `grams`; null where unknown. */
+  nutrients: FoodMacros;
 }

@@ -1,18 +1,33 @@
-import type { IsoDateTime, Macros } from '@/types/api';
+import type { IsoDateTime } from '@/types/api';
 import { localDateOf } from '@/lib/dates';
 import type {
   Food,
   FoodLogEntry,
+  FoodMacros,
   LogSource,
+  MacroTotals,
   MealType,
   NewFoodLog,
+  NutrientTotal,
+  NutrientValue,
   ServingOption,
 } from '@/types/food';
 
 // Pure nutrition math. No React, no I/O, so it is trivially testable and the same rules
 // apply to the picker preview, the saved entry, and the daily totals.
+//
+// Unknown nutrients are null, never 0: scaling keeps them null, totals add known values only
+// and remember that something was unknown, and the formatters below show them as "—".
 
-export const EMPTY_MACROS: Macros = { kcal: 0, protein_g: 0, carb_g: 0, fat_g: 0 };
+export const EMPTY_MACROS: FoodMacros = { kcal: 0, protein_g: 0, carb_g: 0, fat_g: 0 };
+
+/** Totals for a day with nothing logged: zero of everything, and nothing unknown. */
+export const EMPTY_TOTALS: MacroTotals = {
+  kcal: { value: 0, hasUnknown: false },
+  protein_g: { value: 0, hasUnknown: false },
+  carb_g: { value: 0, hasUnknown: false },
+  fat_g: { value: 0, hasUnknown: false },
+};
 
 /** Fallback when a food ships with no servings. */
 export const HUNDRED_GRAMS: ServingOption = { id: '100g', label: '100 g', grams: 100 };
@@ -31,31 +46,37 @@ export function round1(value: number): number {
   return Math.round((value + Number.EPSILON) * 10) / 10;
 }
 
-export function scaleMacros(per100g: Macros, grams: number): Macros {
-  const factor = grams / 100;
+/** Scale one per-100 g value to `grams`. Unknown stays unknown (null), never 0. */
+export function scaleNutrient(per100g: NutrientValue, grams: number): NutrientValue {
+  return per100g === null ? null : round1(per100g * (grams / 100));
+}
+
+export function scaleMacros(per100g: FoodMacros, grams: number): FoodMacros {
   return {
-    kcal: round1(per100g.kcal * factor),
-    protein_g: round1(per100g.protein_g * factor),
-    carb_g: round1(per100g.carb_g * factor),
-    fat_g: round1(per100g.fat_g * factor),
+    kcal: scaleNutrient(per100g.kcal, grams),
+    protein_g: scaleNutrient(per100g.protein_g, grams),
+    carb_g: scaleNutrient(per100g.carb_g, grams),
+    fat_g: scaleNutrient(per100g.fat_g, grams),
   };
 }
 
-export function sumMacros(items: readonly Macros[]): Macros {
-  const total = items.reduce(
-    (acc, item) => ({
-      kcal: acc.kcal + item.kcal,
-      protein_g: acc.protein_g + item.protein_g,
-      carb_g: acc.carb_g + item.carb_g,
-      fat_g: acc.fat_g + item.fat_g,
-    }),
-    EMPTY_MACROS,
-  );
+/** Total of one nutrient across entries: known values only, flagged when any was unknown. */
+export function sumNutrient(values: readonly NutrientValue[]): NutrientTotal {
+  const known = values.filter((value): value is number => value !== null);
+  const hasUnknown = known.length < values.length;
+  if (values.length > 0 && known.length === 0) {
+    return { value: null, hasUnknown };
+  }
+  return { value: round1(known.reduce((sum, value) => sum + value, 0)), hasUnknown };
+}
+
+/** The day's totals, per macro. An empty list is zero of everything (EMPTY_TOTALS). */
+export function sumMacros(items: readonly FoodMacros[]): MacroTotals {
   return {
-    kcal: round1(total.kcal),
-    protein_g: round1(total.protein_g),
-    carb_g: round1(total.carb_g),
-    fat_g: round1(total.fat_g),
+    kcal: sumNutrient(items.map((item) => item.kcal)),
+    protein_g: sumNutrient(items.map((item) => item.protein_g)),
+    carb_g: sumNutrient(items.map((item) => item.carb_g)),
+    fat_g: sumNutrient(items.map((item) => item.fat_g)),
   };
 }
 
@@ -67,7 +88,7 @@ export function servingGrams(serving: ServingOption, quantity: number): number {
   return round1(serving.grams * quantity);
 }
 
-export function macrosForServing(food: Food, serving: ServingOption, quantity: number): Macros {
+export function macrosForServing(food: Food, serving: ServingOption, quantity: number): FoodMacros {
   return scaleMacros(food.macros_per_100g, servingGrams(serving, quantity));
 }
 
@@ -129,6 +150,76 @@ export function formatKcal(value: number): string {
 /** One decimal, trailing ".0" dropped: 12.0 -> "12", 12.34 -> "12.3". */
 export function formatGrams(value: number): string {
   return String(Number(value.toFixed(1)));
+}
+
+export type NutrientUnit = 'kcal' | 'g';
+
+/** What a food component shows for one nutrient, and what VoiceOver reads instead. */
+export interface NutrientDisplay {
+  text: string;
+  accessibilityLabel: string;
+}
+
+/** Shown in place of a number when a nutrient is unknown. */
+export const UNKNOWN_TEXT = '—';
+export const UNKNOWN_LABEL = 'unknown';
+
+/** "105" for calories, "1.3" for grams. Known values only. */
+export function nutrientAmount(value: number, unit: NutrientUnit): string {
+  return unit === 'kcal' ? formatKcal(value) : formatGrams(value);
+}
+
+function unitWord(unit: NutrientUnit): string {
+  return unit === 'kcal' ? 'calories' : 'grams';
+}
+
+/**
+ * The one formatter every food component uses for a nutrient. Known: "105 kcal" / "1.3 g".
+ * Unknown: "—", read as "unknown". Partial (a total with some unknown entries): "120 g+",
+ * read as "at least 120 grams, some entries unknown".
+ */
+export function formatNutrient(
+  value: NutrientValue,
+  unit: NutrientUnit,
+  partial = false,
+): NutrientDisplay {
+  if (value === null) {
+    return { text: UNKNOWN_TEXT, accessibilityLabel: UNKNOWN_LABEL };
+  }
+  const amount = nutrientAmount(value, unit);
+  if (partial) {
+    return {
+      text: `${amount} ${unit}+`,
+      accessibilityLabel: `at least ${amount} ${unitWord(unit)}, some entries unknown`,
+    };
+  }
+  return { text: `${amount} ${unit}`, accessibilityLabel: `${amount} ${unitWord(unit)}` };
+}
+
+/** A daily total: partial when any entry was unknown but some were known. */
+export function formatNutrientTotal(total: NutrientTotal, unit: NutrientUnit): NutrientDisplay {
+  return formatNutrient(total.value, unit, total.hasUnknown && total.value !== null);
+}
+
+/**
+ * A daily total against its target, e.g. "105 / 2680 kcal", "120+ / 175 g" (partial) or
+ * "— / 175 g" (nothing known).
+ */
+export function formatTotalAgainstTarget(
+  total: NutrientTotal,
+  target: number,
+  unit: NutrientUnit,
+): NutrientDisplay {
+  const goal = nutrientAmount(target, unit);
+  const consumed = formatNutrientTotal(total, unit);
+  const amount =
+    total.value === null
+      ? UNKNOWN_TEXT
+      : `${nutrientAmount(total.value, unit)}${total.hasUnknown ? '+' : ''}`;
+  return {
+    text: `${amount} / ${goal} ${unit}`,
+    accessibilityLabel: `${consumed.accessibilityLabel}, target ${goal} ${unitWord(unit)}`,
+  };
 }
 
 /** Fraction of the target reached (may exceed 1), or null when there is no usable target. */

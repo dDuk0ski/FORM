@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 
 import { Card } from '@/components';
-import { defaultServing, formatKcal, macrosForServing } from '@/lib/nutrition';
+import { defaultServing, formatNutrient, macrosForServing } from '@/lib/nutrition';
 import { useTheme } from '@/theme';
 import type { Food } from '@/types/food';
 
@@ -17,11 +17,13 @@ export function FoodCard({ food, onPress }: FoodCardProps) {
   const { colors, spacing, typography } = useTheme();
   const serving = defaultServing(food);
   const macros = macrosForServing(food, serving, 1);
+  const kcal = formatNutrient(macros.kcal, 'kcal');
+  const kcalLabel = macros.kcal === null ? 'calories unknown' : kcal.accessibilityLabel;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${food.name}, ${formatKcal(macros.kcal)} calories per ${serving.label}`}
+      accessibilityLabel={`${food.name}, ${kcalLabel} per ${serving.label}`}
       onPress={() => onPress(food)}
       style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
     >
@@ -34,8 +36,11 @@ export function FoodCard({ food, onPress }: FoodCardProps) {
             ) : null}
             <Text style={[typography.caption, { color: colors.textMuted }]}>{serving.label}</Text>
           </View>
-          <Text style={[typography.heading, { color: colors.text, fontVariant: ['tabular-nums'] }]}>
-            {formatKcal(macros.kcal)} kcal
+          <Text
+            accessibilityLabel={kcal.accessibilityLabel}
+            style={[typography.heading, { color: colors.text, fontVariant: ['tabular-nums'] }]}
+          >
+            {kcal.text}
           </Text>
         </View>
         <MacroLine macros={macros} />

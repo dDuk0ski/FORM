@@ -59,6 +59,10 @@ describe('sample food data', () => {
     // 4 kcal/g, so high-fiber foods (broccoli, apple) run up to ~20% under the estimate.
     for (const food of foodsFixture) {
       const { kcal, protein_g, carb_g, fat_g } = food.macros_per_100g;
+      // Every sample food has all four values known; none may be null.
+      if (kcal === null || protein_g === null || carb_g === null || fat_g === null) {
+        throw new Error(`${food.name} has an unknown macro in the sample data`);
+      }
       const estimate = 4 * protein_g + 4 * carb_g + 9 * fat_g;
       expect(Math.abs(estimate - kcal) / kcal).toBeLessThan(0.25);
     }

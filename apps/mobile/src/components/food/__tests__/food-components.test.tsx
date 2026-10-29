@@ -10,9 +10,10 @@ import { FoodLogList } from '@/components/food/FoodLogList';
 import { SearchResults } from '@/components/food/SearchResults';
 import { TodayNutrition } from '@/components/food/TodayNutrition';
 import { todayLocal } from '@/lib/dates';
-import { buildCustomGramsLog, buildServingLog, hydrateLogEntry } from '@/lib/nutrition';
+import { buildCustomGramsLog, buildServingLog, hydrateLogEntry, sumMacros } from '@/lib/nutrition';
 import { foodsFixture } from '@/mocks/foods';
 import { createWrapper } from '@/test-utils/providers';
+import type { Food } from '@/types/food';
 
 const banana = foodsFixture.find((food) => food.id === 'f_0455')!;
 
@@ -184,7 +185,7 @@ describe('FoodLogForm', () => {
 });
 
 describe('DailyNutritionCard', () => {
-  const totals = { kcal: 105, protein_g: 1.3, carb_g: 26.9, fat_g: 0.4 };
+  const totals = sumMacros([{ kcal: 105, protein_g: 1.3, carb_g: 26.9, fat_g: 0.4 }]);
   const targets = { kcal: 2680, protein_g: 175, carb_g: 300, fat_g: 85 };
 
   it('shows progress toward targets when they are known', () => {
@@ -206,9 +207,46 @@ describe('DailyNutritionCard', () => {
 
   it('caps the bar at 100% when a target is exceeded', () => {
     renderWithProviders(
-      <DailyNutritionCard totals={{ ...totals, kcal: 3000 }} targets={targets} />,
+      <DailyNutritionCard
+        totals={{ ...totals, kcal: { value: 3000, hasUnknown: false } }}
+        targets={targets}
+      />,
     );
     expect(screen.getByLabelText('Calories progress').props.accessibilityValue.now).toBe(100);
+  });
+
+  it('marks a partial total and counts only known values toward progress', () => {
+    const partial = sumMacros([
+      { kcal: 105, protein_g: 120, carb_g: 26.9, fat_g: 0.4 },
+      { kcal: 50, protein_g: null, carb_g: 5, fat_g: 1 },
+    ]);
+    renderWithProviders(<DailyNutritionCard totals={partial} targets={targets} />);
+    expect(screen.getByText('120+ / 175 g')).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Protein at least 120 grams, some entries unknown, target 175 grams'),
+    ).toBeOnTheScreen();
+    // 120 of 175 g known: 69%. The unknown entry adds nothing, not even 0 noise.
+    expect(screen.getByLabelText('Protein progress').props.accessibilityValue.now).toBe(69);
+  });
+
+  it('shows a dash and an empty bar when nothing is known for a macro', () => {
+    const unknown = sumMacros([{ kcal: 105, protein_g: null, carb_g: 26.9, fat_g: 0.4 }]);
+    renderWithProviders(<DailyNutritionCard totals={unknown} targets={targets} />);
+    expect(screen.getByText('— / 175 g')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Protein unknown, target 175 grams')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Protein progress').props.accessibilityValue.now).toBe(0);
+    expect(screen.queryByText('0 / 175 g')).toBeNull();
+  });
+
+  it('shows partial and unknown totals without targets too', () => {
+    const mixed = sumMacros([
+      { kcal: null, protein_g: 120, carb_g: 26.9, fat_g: 0.4 },
+      { kcal: null, protein_g: null, carb_g: 5, fat_g: 1 },
+    ]);
+    renderWithProviders(<DailyNutritionCard totals={mixed} />);
+    expect(screen.getByText('120 g+')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Calories unknown')).toBeOnTheScreen();
+    expect(screen.queryByText('0 kcal')).toBeNull();
   });
 });
 
@@ -252,5 +290,34 @@ describe('FoodLogList', () => {
     );
     renderWithProviders(<FoodLogList entries={[custom]} />);
     expect(screen.getByText('150 g')).toBeOnTheScreen();
+  });
+
+  it('shows a dash, never 0, for a logged food with an unknown nutrient', () => {
+    // Test-only food (not sample data): calories and protein unknown.
+    const mystery: Food = {
+      id: 'f_test_unknown',
+      name: 'Food with unknown values',
+      brand: null,
+      macros_per_100g: { kcal: null, protein_g: null, carb_g: 20, fat_g: 1 },
+      servings: [{ id: '100g', label: '100 g', grams: 100 }],
+    };
+    const unknownEntry = hydrateLogEntry(
+      buildCustomGramsLog({
+        id: 'le_3',
+        food: mystery,
+        grams: 200,
+        loggedAt: '2026-10-16T12:00:00.000Z',
+        meal: 'lunch',
+      }),
+      mystery,
+    );
+    renderWithProviders(<FoodLogList entries={[unknownEntry]} />);
+    expect(screen.getByText('Protein —')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Protein unknown')).toBeOnTheScreen();
+    expect(screen.getByText('—')).toBeOnTheScreen();
+    expect(screen.getByLabelText('unknown')).toBeOnTheScreen();
+    expect(screen.getByText('Carbs 40 g')).toBeOnTheScreen();
+    expect(screen.queryByText('Protein 0 g')).toBeNull();
+    expect(screen.queryByText('0 kcal')).toBeNull();
   });
 });

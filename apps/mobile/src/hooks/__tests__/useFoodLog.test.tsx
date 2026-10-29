@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 
 import { foodService } from '@/api/foods';
 import { useDailyNutrition, useLogFood, useRemoveLogEntry } from '@/hooks/useFoodLog';
-import { EMPTY_MACROS, buildServingLog, hydrateLogEntry, sumMacros } from '@/lib/nutrition';
+import { EMPTY_TOTALS, buildServingLog, hydrateLogEntry, sumMacros } from '@/lib/nutrition';
 import { foodsFixture } from '@/mocks/foods';
 import { createWrapper } from '@/test-utils/providers';
 
@@ -49,7 +49,7 @@ describe('daily nutrition', () => {
     const { result } = setup();
     await waitFor(() => expect(result.current.day.isLoading).toBe(false));
     expect(result.current.day.entries).toEqual([]);
-    expect(result.current.day.totals).toEqual(EMPTY_MACROS);
+    expect(result.current.day.totals).toEqual(EMPTY_TOTALS);
   });
 
   it('updates totals as soon as a food is logged', async () => {
@@ -59,7 +59,7 @@ describe('daily nutrition', () => {
     const first = make('le_1', banana, 1);
     act(() => result.current.add.mutate(first.log));
     await waitFor(() => expect(result.current.day.entries).toHaveLength(1));
-    expect(result.current.day.totals).toEqual(first.entry.nutrients);
+    expect(result.current.day.totals).toEqual(sumMacros([first.entry.nutrients]));
 
     const second = make('le_22', oats, 1.5);
     act(() => result.current.add.mutate(second.log));
@@ -97,7 +97,7 @@ describe('daily nutrition', () => {
     act(() => result.current.add.mutate(make('le_1').log));
     await waitFor(() => expect(result.current.add.isError).toBe(true));
     expect(result.current.day.entries).toEqual([]);
-    expect(result.current.day.totals).toEqual(EMPTY_MACROS);
+    expect(result.current.day.totals).toEqual(EMPTY_TOTALS);
 
     // Retrying the same entry afterwards works.
     act(() => result.current.add.mutate(make('le_1').log));
@@ -113,7 +113,7 @@ describe('daily nutrition', () => {
     act(() => result.current.add.mutate(once.log));
     await waitFor(() => expect(result.current.add.isSuccess).toBe(true));
     await waitFor(() => expect(result.current.day.entries).toHaveLength(1));
-    expect(result.current.day.totals).toEqual(once.entry.nutrients);
+    expect(result.current.day.totals).toEqual(sumMacros([once.entry.nutrients]));
   });
 
   it('ignores entries logged for a different day', async () => {
@@ -122,7 +122,7 @@ describe('daily nutrition', () => {
     act(() => result.current.add.mutate(make('le_1', banana, 1, '2026-10-15').log));
     await waitFor(() => expect(result.current.add.isSuccess).toBe(true));
     expect(result.current.day.entries).toEqual([]);
-    expect(result.current.day.totals).toEqual(EMPTY_MACROS);
+    expect(result.current.day.totals).toEqual(EMPTY_TOTALS);
   });
 
   it('lowers totals when an entry is removed', async () => {
@@ -137,7 +137,7 @@ describe('daily nutrition', () => {
 
     act(() => result.current.remove.mutate('le_22'));
     await waitFor(() => expect(result.current.day.entries).toHaveLength(1));
-    expect(result.current.day.totals).toEqual(keep.entry.nutrients);
+    expect(result.current.day.totals).toEqual(sumMacros([keep.entry.nutrients]));
   });
 
   it('reports a failed load instead of showing zeros', async () => {

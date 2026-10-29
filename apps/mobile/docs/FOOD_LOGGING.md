@@ -62,8 +62,30 @@ Custom grams are saved with `serving_label` and `serving_quantity` set to null.
 The mock log is stored under the key `form.mock.food_log.v2`. Entries saved on a device by the
 earlier build (`v1`) are not read and not deleted; they simply no longer appear.
 
-Not built yet: showing unknown nutrients as "unknown". The sample foods have every value, and the
-real nutrient shape is not in the repo yet.
+## Unknown nutrients
+
+The team agreed that a nutrient is stored per 100 g, and that null means unknown
+(`is_known = false`). It is never 0. The food layer follows that rule everywhere:
+
+- **Types.** `FoodMacros` in `src/types/food.ts` allows null for each of calories, protein, carbs
+  and fat. It is used for a food's per-100 g values and for each log entry's nutrients. The
+  shared `Macros` type in `src/types/api.ts` is unchanged, because GET /today and the Home tab
+  use it and stay all-number.
+- **Scaling.** `scaleMacros` keeps an unknown value null for any amount. It never becomes 0.
+- **Totals.** `sumMacros` adds known values only. Each macro's total is `{ value, hasUnknown }`.
+  `hasUnknown` is true when any entry had that macro unknown. `value` is null when there were
+  entries but none had it known.
+- **Display.** Every food component uses `formatNutrient`, `formatNutrientTotal` or
+  `formatTotalAgainstTarget` from `src/lib/nutrition.ts`:
+  - Unknown: "—", read by VoiceOver as "unknown".
+  - Partial total (some entries unknown): the known sum with a plus, e.g. "120 g+" or
+    "120+ / 175 g", read as "at least 120 grams, some entries unknown".
+- **Progress bars.** Only known values fill a bar and decide whether a target is exceeded. A macro
+  with nothing known shows "—" and an empty bar.
+
+The sample foods in `src/mocks/foods.ts` have every value known, so in mock mode nothing shows
+as unknown. The tests use test-only foods with null values. The real nutrient shape
+(`food_macros`, `is_known`) is not in the repo yet.
 
 ## Changes to shared files (Mason: please glance at these)
 

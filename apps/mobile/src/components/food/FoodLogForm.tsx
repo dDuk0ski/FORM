@@ -16,7 +16,7 @@ import {
   defaultMeal,
   defaultServing,
   formatGrams,
-  formatKcal,
+  formatNutrient,
   formatQuantity,
   newEntryId,
   parseGrams,
@@ -103,6 +103,7 @@ export function FoodLogForm({ food }: { food: Food }) {
       saved.serving_quantity !== null && saved.serving_label !== null
         ? `${formatQuantity(saved.serving_quantity)} × ${saved.serving_label}`
         : `${formatGrams(saved.grams)} g`;
+    const savedKcal = formatNutrient(saved.nutrients.kcal, 'kcal');
     return (
       <View accessibilityLiveRegion="polite">
         <Card variant="soft">
@@ -110,8 +111,11 @@ export function FoodLogForm({ food }: { food: Food }) {
             Added to your log
           </Text>
           <Text style={[typography.body, { color: colors.text }]}>{saved.food_name}</Text>
-          <Text style={[typography.caption, { color: colors.textMuted }]}>
-            {eaten}, {formatKcal(saved.nutrients.kcal)} kcal
+          <Text
+            accessibilityLabel={`${eaten}, ${savedKcal.accessibilityLabel}`}
+            style={[typography.caption, { color: colors.textMuted }]}
+          >
+            {eaten}, {savedKcal.text}
           </Text>
         </Card>
       </View>

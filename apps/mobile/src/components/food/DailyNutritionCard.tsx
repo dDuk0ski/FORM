@@ -1,9 +1,15 @@
 import { Text, View } from 'react-native';
 
 import { Card, ProgressBar } from '@/components';
-import { formatGrams, formatKcal, targetProgress } from '@/lib/nutrition';
+import {
+  formatNutrientTotal,
+  formatTotalAgainstTarget,
+  targetProgress,
+  type NutrientUnit,
+} from '@/lib/nutrition';
 import { useTheme, type ColorTokens } from '@/theme';
 import type { Macros } from '@/types/api';
+import type { MacroTotals, NutrientTotal } from '@/types/food';
 
 type MacroTone = 'calories' | 'protein' | 'carbs' | 'fat';
 
@@ -15,8 +21,8 @@ const toneDot: Record<MacroTone, keyof ColorTokens> = {
 };
 
 type DailyNutritionCardProps = {
-  /** Sum of today's logged entries. */
-  totals: Macros;
+  /** Sum of today's logged entries (known values only, flagged when any were unknown). */
+  totals: MacroTotals;
   /** Daily targets. Omit (or pass null) and the card shows totals without progress bars. */
   targets?: Macros | null;
   /** Small print under the card, e.g. where the targets came from. */
@@ -25,21 +31,22 @@ type DailyNutritionCardProps = {
 
 type MacroRowProps = {
   label: string;
-  consumed: number;
+  consumed: NutrientTotal;
   target: number | undefined;
-  unit: string;
-  format: (value: number) => string;
+  unit: NutrientUnit;
   tone: MacroTone;
 };
 
-function MacroProgressRow({ label, consumed, target, unit, format, tone }: MacroRowProps) {
+function MacroProgressRow({ label, consumed, target, unit, tone }: MacroRowProps) {
   const { colors, spacing, radii, typography } = useTheme();
-  const progress = targetProgress(consumed, target);
+  // Unknown values never count toward progress: only the known sum fills the bar, and a
+  // macro with nothing known leaves it empty.
+  const progress = targetProgress(consumed.value ?? 0, target);
   const over = progress !== null && progress > 1;
   const amount =
     target !== undefined && progress !== null
-      ? `${format(consumed)} / ${format(target)} ${unit}`
-      : `${format(consumed)} ${unit}`;
+      ? formatTotalAgainstTarget(consumed, target, unit)
+      : formatNutrientTotal(consumed, unit);
 
   return (
     <View style={{ gap: spacing.xs }}>
@@ -56,12 +63,13 @@ function MacroProgressRow({ label, consumed, target, unit, format, tone }: Macro
           <Text style={[typography.label, { color: colors.text }]}>{label}</Text>
         </View>
         <Text
+          accessibilityLabel={`${label} ${amount.accessibilityLabel}`}
           style={[
             typography.label,
             { color: over ? colors.warning : colors.textMuted, fontVariant: ['tabular-nums'] },
           ]}
         >
-          {amount}
+          {amount.text}
         </Text>
       </View>
       {progress !== null ? (
@@ -84,7 +92,6 @@ export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutrit
         consumed={totals.kcal}
         target={targets?.kcal}
         unit="kcal"
-        format={formatKcal}
         tone="calories"
       />
       <MacroProgressRow
@@ -92,7 +99,6 @@ export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutrit
         consumed={totals.protein_g}
         target={targets?.protein_g}
         unit="g"
-        format={formatGrams}
         tone="protein"
       />
       <MacroProgressRow
@@ -100,7 +106,6 @@ export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutrit
         consumed={totals.carb_g}
         target={targets?.carb_g}
         unit="g"
-        format={formatGrams}
         tone="carbs"
       />
       <MacroProgressRow
@@ -108,7 +113,6 @@ export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutrit
         consumed={totals.fat_g}
         target={targets?.fat_g}
         unit="g"
-        format={formatGrams}
         tone="fat"
       />
       {targetsNote ? (
