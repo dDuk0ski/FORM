@@ -22,13 +22,7 @@ class WorkoutRequest:
     split: str = "upper_lower"
     duration_minutes: int = 60
     equipment: list[str] = field(default_factory=lambda: ["barbell", "dumbbell", "cable", "body_weight"])
-    preferences: dict[str, float] = field(default_factory=lambda: {
-        "compound_priority": 0.7,
-        "isolation_priority": 0.3,
-        "exercise_variety": 0.5,
-        "free_weight_preference": 0.5,
-        "machine_preference": 0.5,
-    })
+    preferences: dict[str, float] = field(default_factory=lambda: {"compound_priority": 0.7, "isolation_priority": 0.3, "exercise_variety": 0.5, "free_weight_preference": 0.5, "machine_preference": 0.5})
     excluded_exercises: list[str] = field(default_factory=list)
     excluded_muscles: list[str] = field(default_factory=list)
     seed: int | None = 42
@@ -124,33 +118,23 @@ class ExerciseDatabase:
         self.by_id = {str(exercise.get("id")): exercise for exercise in self.exercises if exercise.get("id") is not None}
 
     @staticmethod
-    def _classification(exercise: dict[str, Any]) -> dict[str, Any]:
+    def classification(exercise: dict[str, Any]) -> dict[str, Any]:
         return exercise.get("classification") or {}
 
     @staticmethod
-    def _muscles(exercise: dict[str, Any]) -> dict[str, Any]:
+    def muscles(exercise: dict[str, Any]) -> dict[str, Any]:
         return exercise.get("muscles") or {}
 
     @staticmethod
-    def _movement(exercise: dict[str, Any]) -> dict[str, Any]:
+    def movement(exercise: dict[str, Any]) -> dict[str, Any]:
         return exercise.get("movement") or {}
 
     @staticmethod
-    def _equipment(exercise: dict[str, Any]) -> list[str]:
+    def equipment(exercise: dict[str, Any]) -> list[str]:
         equipment = exercise.get("equipment") or []
-        if isinstance(equipment, str):
-            return [equipment]
-        return [str(value) for value in equipment]
+        return [equipment] if isinstance(equipment, str) else [str(value) for value in equipment]
 
-    def query(
-        self,
-        muscle: str | None = None,
-        movement_pattern: str | None = None,
-        compound: bool | None = None,
-        equipment: list[str] | None = None,
-        category: str | None = "strength",
-        exclude_ids: set[str] | None = None,
-    ) -> list[dict[str, Any]]:
+    def query(self, muscle: str | None = None, movement_pattern: str | None = None, compound: bool | None = None, equipment: list[str] | None = None, category: str | None = "strength", exclude_ids: set[str] | None = None) -> list[dict[str, Any]]:
         exclude_ids = exclude_ids or set()
         required_equipment = set(equipment or [])
         results = []
@@ -158,9 +142,7 @@ class ExerciseDatabase:
             exercise_id = str(exercise.get("id", ""))
             if exercise_id in exclude_ids:
                 continue
-            classification = self._classification(exercise)
-            muscles = self._muscles(exercise)
-            movement = self._movement(exercise)
+            classification, muscles, movement = self.classification(exercise), self.muscles(exercise), self.movement(exercise)
             if category and classification.get("category") != category:
                 continue
             if muscle:
@@ -171,10 +153,8 @@ class ExerciseDatabase:
                 continue
             if compound is not None and movement.get("compound") is not compound:
                 continue
-            if required_equipment:
-                available = set(self._equipment(exercise))
-                if not available.intersection(required_equipment):
-                    continue
+            if required_equipment and not set(self.equipment(exercise)).intersection(required_equipment):
+                continue
             results.append(exercise)
         return results
 
@@ -222,8 +202,7 @@ class SplitGenerator:
         split = request.split.lower()
         if split not in self.SPLITS:
             raise ValueError(f"Unsupported split: {request.split}")
-        templates = self.SPLITS[split]
-        days = []
+        templates, days = self.SPLITS[split], []
         count = min(max(1, request.days_per_week), len(templates))
         for index in range(count):
             name, focus, muscles = templates[index]
@@ -235,7 +214,7 @@ class VolumeAllocator:
     BASE = {
         "beginner": {"chest": 8, "back": 10, "shoulders": 6, "side_delts": 4, "rear_delts": 4, "biceps": 6, "triceps": 6, "quadriceps": 8, "hamstrings": 6, "glutes": 6, "calves": 6, "core": 6},
         "intermediate": {"chest": 12, "back": 14, "shoulders": 8, "side_delts": 6, "rear_delts": 6, "biceps": 8, "triceps": 8, "quadriceps": 10, "hamstrings": 8, "glutes": 8, "calves": 8, "core": 8},
-        "advanced": {"chest": 16, "back": 18, "shoulders": 12, "side_delts": 8, "rear_delts": 8, "biceps": 10, "triceps": 10, "quadriceps": 14, "hamstrings": 12, "glutes": 12, "calves": 10, "core": 10},
+        "advanced": {"chest": 16, "back": 18, "shoulders": 10, "side_delts": 8, "rear_delts": 8, "biceps": 10, "triceps": 10, "quadriceps": 12, "hamstrings": 10, "glutes": 10, "calves": 10, "core": 10},
     }
 
     GROUP_ALIASES = {
@@ -263,8 +242,7 @@ class VolumeAllocator:
     def muscles_for_day(self, focus: str, requested: list[str]) -> list[str]:
         muscles = self.GROUP_ALIASES.get(focus, [])
         if requested:
-            requested_set = set(requested)
-            selected = [muscle for muscle in muscles if muscle in requested_set]
+            selected = [muscle for muscle in muscles if muscle in set(requested)]
             if selected:
                 return selected
         return muscles
@@ -272,9 +250,7 @@ class VolumeAllocator:
     def day_volume(self, muscle: str, number_of_days: int, focus: str) -> int:
         weekly = self.weekly.get(muscle, 6)
         relevant_days = max(1, number_of_days)
-        if focus in {"upper", "lower", "push", "pull", "legs", "chest_triceps", "back_biceps", "shoulders", "arms"}:
-            return max(2, round(weekly / relevant_days))
-        return max(2, round(weekly / max(1, relevant_days)))
+        return max(2, round(weekly / relevant_days))
 
 
 class MovementAllocator:
@@ -298,15 +274,11 @@ class MovementAllocator:
         patterns = self.PATTERNS.get(muscle, [])
         if not patterns:
             return [ExerciseSlot(muscle, None, None, 1, sets, "accessory")]
-        slots = []
-        remaining = sets
+        slots, remaining = [], sets
         for index, (pattern, compound, role) in enumerate(patterns):
             if remaining <= 0:
                 break
-            if index == 0:
-                slot_sets = max(1, math.ceil(remaining * 0.55))
-            else:
-                slot_sets = max(1, math.ceil(remaining / max(1, len(patterns) - index)))
+            slot_sets = max(1, math.ceil(remaining * 0.55)) if index == 0 else max(1, math.ceil(remaining / max(1, len(patterns) - index)))
             slot_sets = min(slot_sets, remaining)
             slots.append(ExerciseSlot(muscle, pattern, compound, index + 1, slot_sets, role))
             remaining -= slot_sets
@@ -324,16 +296,11 @@ class ExerciseSelector:
     }
 
     def __init__(self, database: ExerciseDatabase, request: WorkoutRequest, rng: random.Random):
-        self.database = database
-        self.request = request
-        self.rng = rng
-        self.recent_ids: set[str] = set()
+        self.database, self.request, self.rng, self.recent_ids = database, request, rng, set()
 
-    def _muscle_match(self, exercise: dict[str, Any], target: str) -> float:
+    def muscle_match(self, exercise: dict[str, Any], target: str) -> float:
         muscles = exercise.get("muscles") or {}
-        primary = set(muscles.get("primary") or [])
-        secondary = set(muscles.get("secondary") or [])
-        groups = set(muscles.get("groups") or [])
+        primary, secondary, groups = set(muscles.get("primary") or []), set(muscles.get("secondary") or []), set(muscles.get("groups") or [])
         if target in primary:
             return 1.0
         if target in secondary:
@@ -348,102 +315,55 @@ class ExerciseSelector:
                 return 0.65
         return 0.0
 
-    def _equipment_score(self, exercise: dict[str, Any]) -> float:
+    def equipment_score(self, exercise: dict[str, Any]) -> float:
         requested = set(self.request.equipment)
         if not requested:
             return 0.5
-        available = set(exercise.get("equipment") or [])
-        if available.intersection(requested):
-            return 1.0
-        return 0.0
+        return 1.0 if set(exercise.get("equipment") or []).intersection(requested) else 0.0
 
-    def _preference_score(self, exercise: dict[str, Any]) -> float:
-        movement = exercise.get("movement") or {}
-        compound = bool(movement.get("compound"))
-        compound_priority = self.request.preferences.get("compound_priority", 0.5)
-        isolation_priority = self.request.preferences.get("isolation_priority", 0.5)
-        return compound_priority if compound else isolation_priority
+    def preference_score(self, exercise: dict[str, Any]) -> float:
+        compound = bool((exercise.get("movement") or {}).get("compound"))
+        return self.request.preferences.get("compound_priority", 0.5) if compound else self.request.preferences.get("isolation_priority", 0.5)
 
     def score(self, exercise: dict[str, Any], slot: ExerciseSlot) -> float:
-        classification = exercise.get("classification") or {}
-        movement = exercise.get("movement") or {}
-        muscle_score = self._muscle_match(exercise, slot.target_muscle)
+        classification, movement = exercise.get("classification") or {}, exercise.get("movement") or {}
+        muscle_score = self.muscle_match(exercise, slot.target_muscle)
         pattern_score = 1.0 if slot.movement_pattern and movement.get("pattern") == slot.movement_pattern else (0.35 if not slot.movement_pattern else 0.0)
         compound_score = 1.0 if slot.compound is None else (1.0 if movement.get("compound") is slot.compound else 0.0)
-        equipment_score = self._equipment_score(exercise)
-        preference_score = self._preference_score(exercise)
+        equipment_score, preference_score = self.equipment_score(exercise), self.preference_score(exercise)
         category_score = 1.0 if classification.get("category") == "strength" else 0.0
         variety_penalty = 0.15 if str(exercise.get("id")) in self.recent_ids else 0.0
-        return (
-            muscle_score * 0.35
-            + pattern_score * 0.20
-            + compound_score * 0.10
-            + equipment_score * 0.15
-            + preference_score * 0.10
-            + category_score * 0.05
-            + (1.0 - variety_penalty) * 0.05
-            - variety_penalty
-        )
+        return muscle_score * 0.35 + pattern_score * 0.20 + compound_score * 0.10 + equipment_score * 0.15 + preference_score * 0.10 + category_score * 0.05 + (1.0 - variety_penalty) * 0.05 - variety_penalty
 
     def select(self, slot: ExerciseSlot, used_ids: set[str]) -> tuple[dict[str, Any], float]:
-        candidates = self.database.query(
-            muscle=slot.target_muscle,
-            movement_pattern=slot.movement_pattern,
-            compound=slot.compound,
-            equipment=self.request.equipment,
-            category="strength",
-            exclude_ids=used_ids | {str(value) for value in self.request.excluded_exercises},
-        )
+        excluded_ids = used_ids | {str(value) for value in self.request.excluded_exercises}
+        candidates = self.database.query(muscle=slot.target_muscle, movement_pattern=slot.movement_pattern, compound=slot.compound, equipment=self.request.equipment, category="strength", exclude_ids=excluded_ids)
         if not candidates:
-            candidates = self.database.query(
-                muscle=slot.target_muscle,
-                compound=slot.compound,
-                equipment=self.request.equipment,
-                category="strength",
-                exclude_ids=used_ids | {str(value) for value in self.request.excluded_exercises},
-            )
+            candidates = self.database.query(muscle=slot.target_muscle, compound=slot.compound, equipment=self.request.equipment, category="strength", exclude_ids=excluded_ids)
         if not candidates:
-            candidates = self.database.query(
-                muscle=slot.target_muscle,
-                equipment=self.request.equipment,
-                category="strength",
-                exclude_ids=used_ids | {str(value) for value in self.request.excluded_exercises},
-            )
+            candidates = self.database.query(muscle=slot.target_muscle, equipment=self.request.equipment, category="strength", exclude_ids=excluded_ids)
         if not candidates:
             raise ValueError(f"No exercise candidate found for {slot.target_muscle} / {slot.movement_pattern}.")
         scored = sorted(((self.score(exercise, slot), exercise) for exercise in candidates), key=lambda item: item[0], reverse=True)
-        top = scored[: min(5, len(scored))]
-        score, exercise = self.rng.choice(top)
+        score, exercise = self.rng.choice(scored[:min(5, len(scored))])
         self.recent_ids.add(str(exercise.get("id")))
         return exercise, score
 
 
 class PrescriptionGenerator:
     RULES = {
-        "strength": {
-            "compound": ([3, 5], [3, 6], 3, 240),
-            "isolation": ([2, 4], [6, 12], 2, 150),
-        },
-        "hypertrophy": {
-            "compound": ([3, 4], [6, 10], 2, 180),
-            "isolation": ([2, 4], [10, 15], 2, 90),
-        },
-        "general_fitness": {
-            "compound": ([2, 3], [8, 12], 3, 120),
-            "isolation": ([2, 3], [10, 20], 3, 75),
-        },
+        "strength": {"compound": ([3, 5], [3, 6], 3, 240), "isolation": ([2, 4], [6, 12], 2, 150)},
+        "hypertrophy": {"compound": ([3, 4], [6, 10], 2, 180), "isolation": ([2, 4], [10, 15], 2, 90)},
+        "general_fitness": {"compound": ([2, 3], [8, 12], 3, 120), "isolation": ([2, 3], [10, 20], 3, 75)},
     }
 
     def __init__(self, request: WorkoutRequest, rng: random.Random):
-        self.request = request
-        self.rng = rng
+        self.request, self.rng = request, rng
 
     def generate(self, slot: ExerciseSlot, actual_sets: int) -> tuple[list[int], int, int]:
         goal = self.request.goal if self.request.goal in self.RULES else "hypertrophy"
         rule = self.RULES[goal]["compound" if slot.compound else "isolation"]
-        rep_range = list(rule[1])
-        rir = rule[2]
-        rest = rule[3]
+        rep_range, rir, rest = list(rule[1]), rule[2], rule[3]
         if self.request.experience == "beginner":
             rir += 1
         elif self.request.experience == "advanced":
@@ -457,18 +377,14 @@ class WorkoutValidator:
     def __init__(self, request: WorkoutRequest):
         self.request = request
 
-    @staticmethod
-    def estimate_exercise_minutes(exercise: WorkoutExercise) -> float:
+    def estimate_exercise_minutes(self, exercise: WorkoutExercise) -> float:
         reps = sum(exercise.rep_range) / 2
-        seconds_per_rep = 4
-        work_seconds = exercise.sets * reps * seconds_per_rep
+        work_seconds = exercise.sets * reps * 4
         rest_seconds = max(0, exercise.sets - 1) * exercise.rest_seconds
-        setup_seconds = 60
-        return (work_seconds + rest_seconds + setup_seconds) / 60
+        return (work_seconds + rest_seconds + 60) / 60
 
     def validate(self, workout: Workout) -> dict[str, Any]:
-        errors = []
-        warnings = []
+        errors, warnings = [], []
         if not workout.exercises:
             errors.append("Workout contains no exercises.")
         ids = [exercise.exercise_id for exercise in workout.exercises]
@@ -487,39 +403,28 @@ class WorkoutValidator:
             errors.append("Workout has more than 10 exercises.")
         if any(exercise.sets <= 0 for exercise in workout.exercises):
             errors.append("Exercise has zero or negative sets.")
-        return {
-            "valid": not errors,
-            "errors": errors,
-            "warnings": warnings,
-        }
+        return {"valid": not errors, "errors": errors, "warnings": warnings}
 
 
 class WorkoutGenerator:
     def __init__(self, database: ExerciseDatabase, seed: int | None = 42):
-        self.database = database
-        self.rng = random.Random(seed)
-        self.split_generator = SplitGenerator()
+        self.database, self.rng, self.split_generator = database, random.Random(seed), SplitGenerator()
 
     def generate_program(self, request: WorkoutRequest) -> list[Workout]:
         days = self.split_generator.generate(request)
-        volume_allocator = VolumeAllocator(request)
-        movement_allocator = MovementAllocator()
-        selector = ExerciseSelector(self.database, request, self.rng)
-        prescription = PrescriptionGenerator(request, self.rng)
-        validator = WorkoutValidator(request)
-        workouts = []
-        recent_exercises: set[str] = set()
+        volume_allocator, movement_allocator = VolumeAllocator(request), MovementAllocator()
+        selector, prescription, validator = ExerciseSelector(self.database, request, self.rng), PrescriptionGenerator(request, self.rng), WorkoutValidator(request)
+        workouts, recent_exercises = [], set()
+
         for day in days:
             target_muscles = volume_allocator.muscles_for_day(day.focus, request.preferences.get("target_muscles", []))
-            slots: list[ExerciseSlot] = []
+            slots = []
             for muscle in target_muscles:
-                if muscle in request.excluded_muscles:
-                    continue
-                sets = volume_allocator.day_volume(muscle, len(days), day.focus)
-                slots.extend(movement_allocator.create_slots(muscle, sets))
-            slots = self._limit_slots_to_duration(slots, request.duration_minutes)
-            selected: list[WorkoutExercise] = []
-            used_ids = set(recent_exercises)
+                if muscle not in request.excluded_muscles:
+                    slots.extend(movement_allocator.create_slots(muscle, volume_allocator.day_volume(muscle, len(days), day.focus)))
+            slots = self.limit_slots_to_duration(slots, request.duration_minutes)
+            selected, used_ids = [], set(recent_exercises)
+
             for slot in sorted(slots, key=lambda item: item.priority):
                 try:
                     exercise, score = selector.select(slot, used_ids)
@@ -528,185 +433,61 @@ class WorkoutGenerator:
                 exercise_id = str(exercise.get("id"))
                 used_ids.add(exercise_id)
                 recent_exercises.add(exercise_id)
-                movement = exercise.get("movement") or {}
-                muscles = exercise.get("muscles") or {}
+                movement, muscles = exercise.get("movement") or {}, exercise.get("muscles") or {}
                 rep_range, rir, rest = prescription.generate(slot, slot.sets)
                 primary = (muscles.get("primary") or [None])[0]
-                target = [primary] if primary else [slot.target_muscle]
-                selected.append(WorkoutExercise(
-                    exercise_id=exercise_id,
-                    name=str(exercise.get("name", "Unknown Exercise")),
-                    target_muscles=target,
-                    primary_muscle=primary,
-                    movement_pattern=movement.get("pattern"),
-                    compound=bool(movement.get("compound")),
-                    equipment=list(exercise.get("equipment") or []),
-                    sets=slot.sets,
-                    rep_range=rep_range,
-                    rir=rir,
-                    rest_seconds=rest,
-                    role=slot.role,
-                    selection_score=round(score, 4),
-                ))
-            selected = self._repair_exercise_count(selected)
-            volume = self._calculate_volume(selected)
-            estimated = round(sum(WorkoutValidator.estimate_exercise_minutes(exercise) for exercise in selected))
-            workout = Workout(
-                id=f"workout_{uuid.uuid4().hex[:10]}",
-                name=day.name,
-                goal=request.goal,
-                split=request.split,
-                duration_minutes=request.duration_minutes,
-                estimated_minutes=estimated,
-                training_day=day.day,
-                focus=day.focus,
-                exercises=selected,
-                volume=volume,
-                validation={},
-            )
+                selected.append(WorkoutExercise(exercise_id=exercise_id, name=str(exercise.get("name", "Unknown Exercise")), target_muscles=[primary] if primary else [slot.target_muscle], primary_muscle=primary, movement_pattern=movement.get("pattern"), compound=bool(movement.get("compound")), equipment=list(exercise.get("equipment") or []), sets=slot.sets, rep_range=rep_range, rir=rir, rest_seconds=rest, role=slot.role, selection_score=round(score, 4)))
+
+            selected = self.repair_exercise_count(selected)
+            volume = self.calculate_volume(selected)
+            estimated = round(sum(validator.estimate_exercise_minutes(exercise) for exercise in selected))
+            workout = Workout(id=f"workout_{uuid.uuid4().hex[:10]}", name=day.name, goal=request.goal, split=request.split, duration_minutes=request.duration_minutes, estimated_minutes=estimated, training_day=day.day, focus=day.focus, exercises=selected, volume=volume, validation={})
             workout.validation = validator.validate(workout)
-            workout = self._repair_workout(workout, request, validator)
-            workouts.append(workout)
+            workouts.append(self.repair_workout(workout, request, validator))
+
         return workouts
 
-    @staticmethod
-    def _limit_slots_to_duration(slots: list[ExerciseSlot], duration: int) -> list[ExerciseSlot]:
+    def limit_slots_to_duration(self, slots: list[ExerciseSlot], duration: int) -> list[ExerciseSlot]:
         max_exercises = 7 if duration >= 60 else 5 if duration >= 45 else 4
         if len(slots) <= max_exercises:
             return slots
-        ordered = sorted(slots, key=lambda slot: (slot.priority, -slot.sets))
-        return ordered[:max_exercises]
+        return sorted(slots, key=lambda slot: (slot.priority, -slot.sets))[:max_exercises]
 
-    @staticmethod
-    def _repair_exercise_count(exercises: list[WorkoutExercise]) -> list[WorkoutExercise]:
+    def repair_exercise_count(self, exercises: list[WorkoutExercise]) -> list[WorkoutExercise]:
         if len(exercises) <= 7:
             return exercises
         return sorted(exercises, key=lambda exercise: (exercise.role not in {"primary_compound", "vertical_pull", "horizontal_pull", "press"}, exercise.selection_score))[:7]
 
-    @staticmethod
-    def _calculate_volume(exercises: list[WorkoutExercise]) -> dict[str, int]:
-        volume: dict[str, int] = {}
+    def calculate_volume(self, exercises: list[WorkoutExercise]) -> dict[str, int]:
+        volume = {}
         for exercise in exercises:
             muscle = exercise.primary_muscle or (exercise.target_muscles[0] if exercise.target_muscles else "unknown")
             volume[muscle] = volume.get(muscle, 0) + exercise.sets
         return dict(sorted(volume.items()))
 
-    def _repair_workout(self, workout: Workout, request: WorkoutRequest, validator: WorkoutValidator) -> Workout:
+    def repair_workout(self, workout: Workout, request: WorkoutRequest, validator: WorkoutValidator) -> Workout:
         attempts = 0
         while not workout.validation["valid"] and attempts < 3:
             attempts += 1
-            if any("duration" in error.lower() for error in workout.validation["errors"]):
-                if workout.exercises:
-                    lowest = min(workout.exercises, key=lambda exercise: (exercise.role in {"primary_compound", "press", "vertical_pull", "horizontal_pull"}, exercise.selection_score))
-                    if lowest.sets > 2:
-                        lowest.sets -= 1
-                    else:
-                        workout.exercises.remove(lowest)
-            workout.volume = self._calculate_volume(workout.exercises)
+            if any("duration" in error.lower() for error in workout.validation["errors"]) and workout.exercises:
+                lowest = min(workout.exercises, key=lambda exercise: (exercise.role in {"primary_compound", "press", "vertical_pull", "horizontal_pull"}, exercise.selection_score))
+                if lowest.sets > 2:
+                    lowest.sets -= 1
+                else:
+                    workout.exercises.remove(lowest)
+            workout.volume = self.calculate_volume(workout.exercises)
             workout.estimated_minutes = round(sum(validator.estimate_exercise_minutes(exercise) for exercise in workout.exercises))
             workout.validation = validator.validate(workout)
         return workout
 
 
-class BayesianUpdater:
-    def __init__(self):
-        self.exercise_effectiveness: dict[str, BayesianPosterior] = {}
-        self.adherence: BayesianPosterior = BayesianPosterior()
-        self.recovery: BayesianPosterior = BayesianPosterior()
-
-    def update_from_result(self, result: WorkoutResult) -> None:
-        for exercise in result.exercises:
-            exercise_id = str(exercise.get("exercise_id"))
-            completed = bool(exercise.get("completed", False))
-            posterior = self.exercise_effectiveness.setdefault(exercise_id, BayesianPosterior())
-            posterior.update(completed)
-        if result.adherence_score is not None:
-            self.adherence.update(result.adherence_score >= 0.8)
-        if result.recovery_score is not None:
-            self.recovery.update(result.recovery_score >= 0.7)
-
-    def export(self) -> dict[str, Any]:
-        return {
-            "exercise_effectiveness": {
-                exercise_id: {
-                    "alpha": posterior.alpha,
-                    "beta": posterior.beta,
-                    "mean": round(posterior.mean, 4),
-                }
-                for exercise_id, posterior in self.exercise_effectiveness.items()
-            },
-            "adherence": {
-                "alpha": self.adherence.alpha,
-                "beta": self.adherence.beta,
-                "mean": round(self.adherence.mean, 4),
-            },
-            "recovery": {
-                "alpha": self.recovery.alpha,
-                "beta": self.recovery.beta,
-                "mean": round(self.recovery.mean, 4),
-            },
-        }
-
-
 def create_example_requests() -> list[WorkoutRequest]:
     equipment = ["barbell", "dumbbell", "cable", "body_weight", "leverage_machine", "smith_machine"]
     return [
-        WorkoutRequest(
-            goal="hypertrophy",
-            experience="intermediate",
-            days_per_week=4,
-            split="upper_lower",
-            duration_minutes=60,
-            equipment=equipment,
-            preferences={
-                "compound_priority": 0.7,
-                "isolation_priority": 0.3,
-                "exercise_variety": 0.5,
-            },
-            seed=42,
-        ),
-        WorkoutRequest(
-            goal="strength",
-            experience="intermediate",
-            days_per_week=4,
-            split="upper_lower",
-            duration_minutes=75,
-            equipment=equipment,
-            preferences={
-                "compound_priority": 0.9,
-                "isolation_priority": 0.1,
-                "exercise_variety": 0.3,
-            },
-            seed=43,
-        ),
-        WorkoutRequest(
-            goal="general_fitness",
-            experience="beginner",
-            days_per_week=3,
-            split="full_body",
-            duration_minutes=45,
-            equipment=["dumbbell", "cable", "body_weight", "resistance_band"],
-            preferences={
-                "compound_priority": 0.6,
-                "isolation_priority": 0.4,
-                "exercise_variety": 0.7,
-            },
-            seed=44,
-        ),
-        WorkoutRequest(
-            goal="hypertrophy",
-            experience="advanced",
-            days_per_week=5,
-            split="push_pull_legs",
-            duration_minutes=70,
-            equipment=equipment,
-            preferences={
-                "compound_priority": 0.65,
-                "isolation_priority": 0.35,
-                "exercise_variety": 0.7,
-            },
-            seed=45,
-        ),
+        WorkoutRequest(goal="hypertrophy", experience="intermediate", days_per_week=4, split="upper_lower", duration_minutes=60, equipment=equipment, preferences={"compound_priority": 0.7, "isolation_priority": 0.3, "exercise_variety": 0.5}, seed=42),
+        WorkoutRequest(goal="strength", experience="intermediate", days_per_week=4, split="upper_lower", duration_minutes=75, equipment=equipment, preferences={"compound_priority": 0.9, "isolation_priority": 0.1, "exercise_variety": 0.3}, seed=43),
+        WorkoutRequest(goal="general_fitness", experience="beginner", days_per_week=3, split="full_body", duration_minutes=45, equipment=["dumbbell", "cable", "body_weight", "resistance_band"], preferences={"compound_priority": 0.6, "isolation_priority": 0.4, "exercise_variety": 0.7}, seed=44),
+        WorkoutRequest(goal="hypertrophy", experience="advanced", days_per_week=5, split="push_pull_legs", duration_minutes=70, equipment=equipment, preferences={"compound_priority": 0.65, "isolation_priority": 0.35, "exercise_variety": 0.7}, seed=45),
     ]
 
 
@@ -723,34 +504,13 @@ def write_json(path: Path, data: Any) -> None:
 def main() -> None:
     exercise_file = DEFAULT_EXERCISE_FILE
     if not exercise_file.exists():
-        raise FileNotFoundError(
-            f"Could not find {exercise_file}. Put normalized_exercises.json beside this script or change DEFAULT_EXERCISE_FILE."
-        )
-
-    database = ExerciseDatabase(exercise_file)
-    generator = WorkoutGenerator(database, seed=42)
-    requests = create_example_requests()
-
-    generated = []
-    for request in requests:
-        workouts = generator.generate_program(request)
-        generated.append({
-            "request": asdict(request),
-            "workouts": serialize_workouts(workouts),
-        })
-
+        raise FileNotFoundError(f"Could not find {exercise_file}. Put normalized_exercises.json beside this script or change DEFAULT_EXERCISE_FILE.")
+    database, generator, requests = ExerciseDatabase(exercise_file), WorkoutGenerator(exercise_file and 42), create_example_requests()
+    generator.database = database
+    generated = [{"request": asdict(request), "workouts": serialize_workouts(generator.generate_program(request))} for request in requests]
     write_json(DEFAULT_OUTPUT_FILE, generated)
-
-    result = WorkoutResult(
-        workout_id="example_workout",
-        completed=True,
-        exercises=[],
-        recovery_score=None,
-        adherence_score=None,
-        notes="Example result schema. Populate this with real workout results after the user completes a workout.",
-    )
+    result = WorkoutResult(workout_id="example_workout", completed=True, exercises=[], recovery_score=None, adherence_score=None, notes="Example result schema. Populate this with real workout results after the user completes a workout.")
     write_json(DEFAULT_RESULT_FILE, asdict(result))
-
     print(f"Loaded {len(database.exercises)} exercises.")
     print(f"Generated {sum(len(item['workouts']) for item in generated)} workouts.")
     print(f"Workout file: {DEFAULT_OUTPUT_FILE}")
