@@ -17,6 +17,17 @@ const light = {
   protein: '#7C3AED',
   carb: '#C2410C',
   fat: '#0F766E',
+  // One accent per area of the brief, from Apple's system palette.
+  kcal: '#FA114F',
+  eat: '#FF9500',
+  train: '#5856D6',
+  readiness: '#34C759',
+  week: '#AF52DE',
+  alert: '#FF9500',
+  // Soft wash behind the daily brief.
+  briefStart: '#EEE9FF',
+  briefEnd: '#FFF1E6',
+  shadow: '#000000',
 };
 
 export type ColorTokens = typeof light;
@@ -36,9 +47,28 @@ const dark: ColorTokens = {
   protein: '#A78BFA',
   carb: '#FB923C',
   fat: '#2DD4BF',
+  kcal: '#FF375F',
+  eat: '#FF9F0A',
+  train: '#7D7AFF',
+  readiness: '#30D158',
+  week: '#BF5AF2',
+  alert: '#FF9F0A',
+  briefStart: '#241F3D',
+  briefEnd: '#2E2219',
+  shadow: '#000000',
 };
 
 export const colors = { light, dark };
+
+/** A token at reduced opacity, for tinted icon wells, ring tracks and chips. */
+export function withAlpha(hex: string, alpha: number): string {
+  return (
+    hex +
+    Math.round(alpha * 255)
+      .toString(16)
+      .padStart(2, '0')
+  );
+}
 
 export const spacing = {
   xs: 4,
@@ -53,6 +83,7 @@ export const radii = {
   sm: 6,
   md: 10,
   lg: 16,
+  xl: 22,
   pill: 999,
 } as const;
 
@@ -63,6 +94,18 @@ export const typography = {
   label: { fontSize: 14, lineHeight: 18, fontWeight: '500' },
   caption: { fontSize: 12, lineHeight: 16, fontWeight: '400' },
   number: { fontSize: 32, lineHeight: 38, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  /** SF Rounded, for the big glanceable numbers. */
+  display: {
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '700',
+    fontFamily: 'ui-rounded',
+    fontVariant: ['tabular-nums'],
+  },
+  rounded: { fontSize: 20, lineHeight: 24, fontWeight: '600', fontFamily: 'ui-rounded' },
+  /** Small uppercase label above a section or tile. */
+  eyebrow: { fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 0.6 },
+  lead: { fontSize: 17, lineHeight: 24, fontWeight: '500' },
 } satisfies Record<string, TextStyle>;
 
 export type Theme = {
