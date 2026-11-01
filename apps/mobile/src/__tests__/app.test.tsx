@@ -6,6 +6,7 @@ it('renders the Today tab with mocked data', async () => {
   renderRouter('src/app');
 
   expect(screen.getByRole('header', { name: 'Today' })).toBeOnTheScreen();
-  expect(await screen.findByText('612 kcal')).toBeOnTheScreen();
-  expect(screen.getByText('2068 kcal')).toBeOnTheScreen();
+  expect(await screen.findByText('612')).toBeOnTheScreen();
+  expect(screen.getByText('2,068 kcal')).toBeOnTheScreen();
+  expect(await screen.findByText('Breakfast')).toBeOnTheScreen();
 });

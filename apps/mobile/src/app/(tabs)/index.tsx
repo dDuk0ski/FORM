@@ -1,39 +1,64 @@
-import { router } from 'expo-router';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Text } from 'react-native';
 
-import { Button, Card, Row, Screen, StatTile } from '@/components';
+import { Button, Card, Row, Screen } from '@/components';
+import {
+  CalorieCard,
+  GapCloserCard,
+  MacroCard,
+  MealsCard,
+  MicronutrientCard,
+} from '@/features/nutrition';
+import { useNutritionDay } from '@/hooks/useNutritionDay';
 import { useToday } from '@/hooks/useToday';
 import { useTheme } from '@/theme';
 
-// Today: targets, consumed, remaining and readiness from GET /today.
-// TODO(Today): gap closer button -> ml.gapCloser (POST /gap-closer).
+// Today: the nutrition dashboard (targets, macros, what to eat next, meals, micronutrients)
+// plus today's readiness.
 // TODO(Today): readiness check-in (sleep_h, soreness, stress) -> readiness_checkins.
-// TODO(Today): daily weigh-in -> body_metrics; show protein_split, micronutrient_flags.
+// TODO(Today): daily weigh-in -> body_metrics.
 export default function TodayScreen() {
-  const { colors, spacing, typography } = useTheme();
-  const { data, isPending, error, refetch } = useToday();
+  const { colors, typography } = useTheme();
+  const today = useToday();
+  const day = useNutritionDay();
+
+  if (today.isPending) {
+    return (
+      <Screen title="Today">
+        <ActivityIndicator accessibilityLabel="Loading today" />
+      </Screen>
+    );
+  }
+  if (today.error) {
+    return (
+      <Screen title="Today">
+        <Card>
+          <Text style={[typography.body, { color: colors.danger }]}>{today.error.message}</Text>
+          <Button title="Retry" variant="secondary" onPress={() => today.refetch()} />
+        </Card>
+      </Screen>
+    );
+  }
+
+  const data = today.data;
   return (
     <Screen title="Today">
-      {isPending ? (
-        <ActivityIndicator accessibilityLabel="Loading today" />
-      ) : error ? (
-        <Card>
-          <Text style={[typography.body, { color: colors.danger }]}>{error.message}</Text>
-          <Button title="Retry" variant="secondary" onPress={() => refetch()} />
-        </Card>
+      <CalorieCard today={data} />
+      <MacroCard today={data} />
+      <GapCloserCard remaining={data.remaining} />
+      {day.data ? (
+        <>
+          <MealsCard meals={day.data.meals} proteinSplit={data.protein_split} />
+          <MicronutrientCard nutrients={day.data.micronutrients} flags={data.micronutrient_flags} />
+        </>
       ) : (
-        <Card>
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <StatTile label="Calories left" value={data.remaining.kcal} unit="kcal" />
-            <StatTile label="Readiness" value={data.readiness.score} />
-          </View>
-          <Row label="Target" value={`${data.targets.kcal} kcal`} />
-          <Row label="Eaten" value={`${data.consumed.kcal} kcal`} />
-          <Row label="Protein left" value={`${data.remaining.protein_g} g`} />
-          <Text style={[typography.caption, { color: colors.textMuted }]}>{data.rationale}</Text>
-        </Card>
+        <ActivityIndicator accessibilityLabel="Loading meals" />
       )}
-      <Button title="Log food" onPress={() => router.push('/log-food')} />
+      <Card>
+        <Row label="Readiness" value={data.readiness.score} />
+        <Text style={[typography.caption, { color: colors.textMuted }]}>
+          {data.readiness.advice}
+        </Text>
+      </Card>
     </Screen>
   );
 }
