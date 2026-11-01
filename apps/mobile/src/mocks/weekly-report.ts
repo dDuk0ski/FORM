@@ -14,9 +14,10 @@ export const weeklyReportFixture: WeeklyReport = {
     start_kg: 82.8,
     end_kg: 82.4,
     goal_kg_per_week: -0.4,
+    trend_kg: [82.8, 82.74, 82.69, 82.61, 82.55, 82.46, 82.4],
   },
   real_burn: {
-    headline: 'You burn about 2,710 kcal a day',
+    headline: 'Your burn is holding steady',
     tdee_kcal: 2710,
     change_kcal: 40,
     formula_kcal: 2590,
@@ -37,7 +38,7 @@ export const weeklyReportFixture: WeeklyReport = {
     avg_readiness: 72,
   },
   adherence: {
-    headline: 'On target 5 of 7 days',
+    headline: 'Close, but protein slipped on weekends',
     days_on_target: 5,
     days_logged: 7,
     macros: [

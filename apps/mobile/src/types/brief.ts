@@ -42,7 +42,14 @@ export interface WeeklyReport {
   week_end: string;
   /** What to do or change next week, most important first. Shown before any numbers. */
   recommendations: string[];
-  body_weight: { headline: string; start_kg: number; end_kg: number; goal_kg_per_week: number };
+  body_weight: {
+    headline: string;
+    start_kg: number;
+    end_kg: number;
+    goal_kg_per_week: number;
+    /** Daily trend weight across the week, oldest first. */
+    trend_kg: number[];
+  };
   real_burn: { headline: string; tdee_kcal: number; change_kcal: number; formula_kcal: number };
   strength: { headline: string; lifts: LiftProgress[] };
   difficulty: {
