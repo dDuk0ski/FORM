@@ -6,15 +6,14 @@ it('renders the daily brief on Today with mocked data', async () => {
   renderRouter('src/app');
 
   expect(screen.getByRole('header', { name: 'Today' })).toBeOnTheScreen();
-  expect(await screen.findByText('612 kcal · 48 g protein left')).toBeOnTheScreen();
-  expect(screen.getByText('Dinner not logged yet')).toBeOnTheScreen();
-  expect(screen.getByText('Use the chicken breast tomorrow')).toBeOnTheScreen();
+  expect(await screen.findByText('612')).toBeOnTheScreen();
+  expect(screen.getByText('Dinner next')).toBeOnTheScreen();
+  expect(screen.getByText('Chicken breast tomorrow')).toBeOnTheScreen();
 });
 
-it('opens the quick log options from the Log row', async () => {
+it('opens the weigh-in sheet from the quick actions', async () => {
   renderRouter('src/app');
 
-  fireEvent.press(await screen.findByRole('button', { name: /^Log:/ }));
-  expect(await screen.findByText('Weigh in')).toBeOnTheScreen();
-  expect(screen.getByText('Check in for training')).toBeOnTheScreen();
+  fireEvent.press(await screen.findByRole('button', { name: 'Weigh in' }));
+  expect(await screen.findByText('Weight')).toBeOnTheScreen();
 });

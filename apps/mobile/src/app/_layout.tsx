@@ -31,9 +31,8 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
-        {/* Sheets over Today: brief details, quick log and the weekly report. */}
+        {/* Sheets over Today: brief details, weigh-in, check-in and the weekly report. */}
         <Stack.Screen name="(sheets)/brief/[section]" options={sheet([0.6, 1])} />
-        <Stack.Screen name="(sheets)/quick-log" options={sheet('fitToContents')} />
         <Stack.Screen name="(sheets)/weigh-in" options={sheet('fitToContents')} />
         <Stack.Screen name="(sheets)/check-in" options={sheet('fitToContents')} />
         <Stack.Screen name="(sheets)/weekly" options={sheet([1])} />

@@ -13,12 +13,12 @@ export const dailyBriefFixture: DailyBrief = {
   deficiencies: [{ nutrient: 'Magnesium', pct_of_target_7d: 55 }],
   eat: {
     headline: 'Chicken and Greek yogurt for dinner',
-    detail: '316 kcal · 58 g protein, from your pantry',
+    detail: '316 kcal · 58 g protein',
   },
   train: {
     kind: 'session',
-    headline: 'Upper A at normal effort',
-    detail: '5 exercises · about 55 min',
+    headline: 'Upper A, normal effort',
+    detail: '5 exercises · 55 min',
     exercises: [
       { name: 'Bench press', sets: 3, reps_min: 6, reps_max: 8, weight_kg: 80, rir: 2 },
       { name: 'Barbell row', sets: 3, reps_min: 8, reps_max: 10, weight_kg: 70, rir: 2 },
