@@ -56,7 +56,7 @@ src/
     (tabs)/cook.tsx       Cook
     (tabs)/train.tsx      Train
     (tabs)/profile.tsx    Profile
-    (sheets)/             bottom sheets over Today: brief details, quick log, weigh-in,
+    (sheets)/             bottom sheets over Today: brief details, weigh-in,
                           check-in, weekly report (presentation set in _layout.tsx)
     (modals)/log-food.tsx example modal; add more modals beside it
   api/
@@ -66,7 +66,7 @@ src/
   hooks/                  one TanStack Query hook per data source (useToday is the example)
   components/             primitives: Screen, Card, Row, Button, Pill, StatTile, NumberStepper,
                           ProgressBar, SegmentedControl
-  features/brief/         the daily brief rows on Today (recommendation first, number second)
+  features/brief/         the daily brief tiles, rings and quick actions on Today
   features/nutrition/     nutrition cards shown in the brief's detail sheets: calories, macros,
                           gap closer, meals, micros
   mocks/                  one fixture per ML route, plus nutrition-day.ts (placeholder food logs
