@@ -17,3 +17,11 @@ it('opens the weigh-in sheet from the quick actions', async () => {
   fireEvent.press(await screen.findByRole('button', { name: 'Weigh in' }));
   expect(await screen.findByText('Weight')).toBeOnTheScreen();
 });
+
+it('shows today’s session and progression changes on Train', async () => {
+  renderRouter('src/app', { initialUrl: '/train' });
+
+  expect(await screen.findByText('3 of 5 lifts progress today')).toBeOnTheScreen();
+  expect(screen.getByText('+2.5 kg')).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: 'Start workout' })).toBeOnTheScreen();
+});
