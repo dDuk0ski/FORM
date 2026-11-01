@@ -14,6 +14,9 @@ const light = {
   success: '#1A7F37',
   warning: '#9A6700',
   danger: '#CF222E',
+  protein: '#7C3AED',
+  carb: '#C2410C',
+  fat: '#0F766E',
 };
 
 export type ColorTokens = typeof light;
@@ -30,6 +33,9 @@ const dark: ColorTokens = {
   success: '#3FB950',
   warning: '#D29922',
   danger: '#F85149',
+  protein: '#A78BFA',
+  carb: '#FB923C',
+  fat: '#2DD4BF',
 };
 
 export const colors = { light, dark };
