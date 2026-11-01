@@ -62,9 +62,13 @@ src/
     ml.ts                 typed wrappers for the ML routes (mock or live)
     supabase.ts           the Supabase client, session persisted in AsyncStorage
   hooks/                  one TanStack Query hook per data source (useToday is the example)
-  components/             primitives: Screen, Card, Row, Button, Pill, StatTile, NumberStepper
-  mocks/                  one fixture per ML route (the stub responses)
+  components/             primitives: Screen, Card, Row, Button, Pill, StatTile, NumberStepper,
+                          ProgressBar, SegmentedControl
+  features/nutrition/     the Today dashboard cards: calories, macros, gap closer, meals, micros
+  mocks/                  one fixture per ML route, plus nutrition-day.ts (placeholder food logs
+                          until the database is up)
   types/api.ts            request/response types for every ML route
+  types/nutrition.ts      shapes the nutrition screens read from Supabase
   theme.ts                colors (light/dark), spacing, type scale, radii
 ```
 
