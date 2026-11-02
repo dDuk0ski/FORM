@@ -10,7 +10,7 @@ export const todayFixture: TodayResponse = {
   target_source: 'adaptive',
   rationale: 'Weight trend fell 0.4 kg over 14 days on 2,560 kcal average.',
   readiness: { score: 71, advice: 'Normal session.' },
-  protein_split: { meals_logged: 3, largest_meal_g: 52, advice: 'Aim for 40 g at dinner.' },
+  protein_split: { meals_logged: 3, largest_meal_g: 52, advice: 'Aim for 40 g protein at dinner.' },
   micronutrient_flags: [{ nutrient: 'magnesium', pct_of_rda_7d: 55, confidence: 0.8 }],
   log_quality: 0.82,
   stub: true,

@@ -51,20 +51,32 @@ src/
   app/                    routes (Expo Router: every file is a screen)
     _layout.tsx           root stack + QueryClientProvider
     (tabs)/_layout.tsx    the five tabs, in order
-    (tabs)/index.tsx      Today (default tab)
+    (tabs)/index.tsx      Today (default tab): the daily brief
     (tabs)/pantry.tsx     Pantry
     (tabs)/cook.tsx       Cook
-    (tabs)/train.tsx      Train
+    (tabs)/train.tsx      Train: today's session, week plan, model changes, weekly volume
     (tabs)/profile.tsx    Profile
+    (sheets)/             bottom sheets over Today: brief details, weigh-in,
+                          check-in, weekly report (presentation set in _layout.tsx)
     (modals)/log-food.tsx example modal; add more modals beside it
   api/
     env.ts                every EXPO_PUBLIC_* read lives here
     ml.ts                 typed wrappers for the ML routes (mock or live)
     supabase.ts           the Supabase client, session persisted in AsyncStorage
   hooks/                  one TanStack Query hook per data source (useToday is the example)
-  components/             primitives: Screen, Card, Row, Button, Pill, StatTile, NumberStepper
-  mocks/                  one fixture per ML route (the stub responses)
+  components/             primitives: Screen, Card, Row, Button, Pill, StatTile, NumberStepper,
+                          ProgressBar, SegmentedControl
+  features/brief/         the daily brief tiles, rings and quick actions on Today
+  features/training/      Train tab pieces: week strip, exercise rows, progression badges and
+                          probability bars for the training model's decisions
+  features/nutrition/     nutrition cards shown in the brief's detail sheets: calories, macros,
+                          gap closer, meals, micros
+  mocks/                  one fixture per ML route, plus nutrition-day.ts (placeholder food logs
+                          until the database is up)
   types/api.ts            request/response types for every ML route
+  types/nutrition.ts      shapes the nutrition screens read from Supabase
+  types/brief.ts          daily brief and weekly report shapes (fixtures until model_outputs)
+  types/training.ts       Train tab shapes, following the workout generator and progression model
   theme.ts                colors (light/dark), spacing, type scale, radii
 ```
 

@@ -2,6 +2,8 @@ export { Button } from './Button';
 export { Card } from './Card';
 export { NumberStepper } from './NumberStepper';
 export { Pill } from './Pill';
+export { ProgressBar } from './ProgressBar';
 export { Row } from './Row';
 export { Screen } from './Screen';
+export { SegmentedControl } from './SegmentedControl';
 export { StatTile } from './StatTile';
