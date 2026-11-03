@@ -9,6 +9,13 @@ How the estimate is built:
    came out of body mass (7700 kcal per kg), using the weight slope over the window.
 4. Blend: the weight on the observed value ramps from 0 at 7 logged days to 1 at 21 logged days.
 
+Two guards against messy real logs (version 2):
+- Incomplete days: a day logged far below the user's normal (under 60% of the window median) is
+  almost always a forgotten meal, not a fast. Those days are left out of the mean intake, so they
+  do not drag the estimate, and the targets, down.
+- Robust slope: the weight slope is a Huber regression, so a few water-inflated weigh-ins after a
+  salty meal pull on it far less than they would on ordinary least squares.
+
 Because the observed value uses *logged* intake, a user who consistently under-logs gets a lower
 TDEE in the same units they log in. Targets set from it still move their real weight correctly,
 which is why logging does not have to be perfect.
@@ -28,10 +35,13 @@ WINDOW_DAYS = 28
 RAMP_START_DAYS = 7
 RAMP_FULL_DAYS = 21
 MIN_WEIGH_INS = 4
+INCOMPLETE_FRACTION = 0.6
+MIN_DAYS_FOR_FILTER = 7
+HUBER_K = 1.345
 
 Sex = Literal["male", "female"]
 ActivityLevel = Literal["sedentary", "light", "moderate", "active", "very_active"]
-SlopeMethod = Literal["regression", "trend"]
+SlopeMethod = Literal["robust", "regression", "trend"]
 
 ACTIVITY_FACTORS: dict[str, float] = {
     "sedentary": 1.2,
@@ -98,11 +108,45 @@ def trend_weights(weights: Sequence[float | None], alpha: float = TREND_ALPHA) -
     return trend
 
 
+def typical_intakes(intakes: Sequence[float]) -> list[float]:
+    """Logged intakes without the days that were clearly logged incomplete.
+
+    Needs a week of logs to know what normal is; with fewer, every day counts.
+    """
+    if len(intakes) < MIN_DAYS_FOR_FILTER:
+        return list(intakes)
+    cutoff = INCOMPLETE_FRACTION * float(np.median(intakes))
+    return [k for k in intakes if k >= cutoff]
+
+
+def huber_slope(xs: np.ndarray, ys: np.ndarray, iterations: int = 25) -> float:
+    """Slope of a Huber regression, fitted by iteratively reweighted least squares.
+
+    Residuals within HUBER_K robust standard deviations count fully; larger ones count less
+    the further out they are.
+    """
+    slope, intercept = np.polyfit(xs, ys, 1)
+    for _ in range(iterations):
+        residuals = ys - (intercept + slope * xs)
+        scale = 1.4826 * float(np.median(np.abs(residuals - np.median(residuals))))
+        if scale < 1e-9:
+            break
+        cutoff = HUBER_K * scale
+        weights = np.minimum(1.0, cutoff / np.maximum(np.abs(residuals), 1e-12))
+        new_slope, new_intercept = np.polyfit(xs, ys, 1, w=np.sqrt(weights))
+        if abs(new_slope - slope) < 1e-7:
+            slope, intercept = new_slope, new_intercept
+            break
+        slope, intercept = new_slope, new_intercept
+    return float(slope)
+
+
 def weight_slope(
-    days: Sequence[DayRecord], method: SlopeMethod = "regression", alpha: float = TREND_ALPHA
+    days: Sequence[DayRecord], method: SlopeMethod = "robust", alpha: float = TREND_ALPHA
 ) -> float | None:
     """Body-weight change in kg/day across the given days, or None without enough weigh-ins.
 
+    "robust": Huber regression on the raw weigh-ins. Like "regression", but outliers count less.
     "regression": least-squares slope of the raw weigh-ins. No lag, a little noisier.
     "trend": change in the smoothed trend between the first and last day. Smoother, but lags
     behind real change for the first couple of weeks of a user's history.
@@ -110,9 +154,12 @@ def weight_slope(
     xs = [i for i, d in enumerate(days) if d.weight_kg is not None]
     if len(xs) < MIN_WEIGH_INS or xs[-1] - xs[0] < RAMP_START_DAYS:
         return None
-    if method == "regression":
-        ys = [days[i].weight_kg for i in xs]
-        slope, _ = np.polyfit(np.asarray(xs, dtype=float), np.asarray(ys, dtype=float), 1)
+    if method in ("robust", "regression"):
+        x = np.asarray(xs, dtype=float)
+        y = np.asarray([days[i].weight_kg for i in xs], dtype=float)
+        if method == "robust":
+            return huber_slope(x, y)
+        slope, _ = np.polyfit(x, y, 1)
         return float(slope)
     trend = trend_weights([d.weight_kg for d in days], alpha)
     first, last = trend[xs[0]], trend[-1]
@@ -120,9 +167,13 @@ def weight_slope(
     return (last - first) / (len(days) - 1 - xs[0])
 
 
-def observed_tdee(days: Sequence[DayRecord], method: SlopeMethod = "regression") -> float | None:
+def observed_tdee(
+    days: Sequence[DayRecord], method: SlopeMethod = "robust", filter_incomplete: bool = True
+) -> float | None:
     """Mean logged intake minus energy stored in body mass, over the given days."""
     intakes = [d.kcal_in for d in days if d.kcal_in is not None]
+    if filter_incomplete:
+        intakes = typical_intakes(intakes)
     slope = weight_slope(days, method)
     if not intakes or slope is None:
         return None
@@ -139,7 +190,8 @@ def estimate_tdee(
     profile: Profile,
     history: Sequence[DayRecord],
     window_days: int = WINDOW_DAYS,
-    method: SlopeMethod = "regression",
+    method: SlopeMethod = "robust",
+    filter_incomplete: bool = True,
 ) -> TdeeEstimate:
     """Today's TDEE estimate from the profile and the user's history (oldest first)."""
     trend = trend_weights([d.weight_kg for d in history])
@@ -149,7 +201,9 @@ def estimate_tdee(
     window = list(history[-window_days:])
     intakes = [d.kcal_in for d in window if d.kcal_in is not None]
     logged = len(intakes)
-    observed = observed_tdee(window, method)
+    if filter_incomplete:
+        intakes = typical_intakes(intakes)
+    observed = observed_tdee(window, method, filter_incomplete)
     slope = weight_slope(window, method)
 
     weight = observed_weight(logged) if observed is not None else 0.0
