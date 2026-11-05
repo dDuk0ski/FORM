@@ -118,9 +118,15 @@ def energy_density(profile: Profile, weight_kg: float | None = None) -> float:
     return lean_share * LEAN_KCAL_PER_KG + (1 - lean_share) * FAT_KCAL_PER_KG
 
 
-def logged_kcal_per_kg(profile: Profile, weight_kg: float | None = None) -> float:
+def logged_kcal_per_kg(
+    profile: Profile,
+    weight_kg: float | None = None,
+    logged_share: float = LOGGED_SHARE_PRIOR,
+    body_fat_density: bool = True,
+) -> float:
     """Logged kcal per kg of weight change: the factor between weight change and logged intake."""
-    return energy_density(profile, weight_kg) * LOGGED_SHARE_PRIOR
+    density = energy_density(profile, weight_kg) if body_fat_density else KCAL_PER_KG
+    return density * logged_share
 
 
 def formula_tdee(profile: Profile, weight_kg: float | None = None) -> float:
@@ -232,19 +238,26 @@ def estimate_tdee(
     window_days: int = WINDOW_DAYS,
     method: SlopeMethod = "robust",
     filter_incomplete: bool = True,
+    logged_share: float = LOGGED_SHARE_PRIOR,
+    body_fat_density: bool = True,
 ) -> TdeeEstimate:
-    """Today's TDEE estimate from the profile and the user's history (oldest first)."""
+    """Today's TDEE estimate from the profile and the user's history (oldest first).
+
+    The defaults are the current model; logged_share=1 with body_fat_density=False gives
+    version 2's units, for comparison in the evaluation.
+    """
     trend = trend_weights([d.weight_kg for d in history])
     latest_trend = next((t for t in reversed(trend) if t is not None), None)
     formula = formula_tdee(profile, latest_trend)
-    prior = formula * LOGGED_SHARE_PRIOR      # the formula is in real kcal; estimates are logged
+    prior = formula * logged_share            # the formula is in real kcal; estimates are logged
 
     window = list(history[-window_days:])
     intakes = [d.kcal_in for d in window if d.kcal_in is not None]
     logged = len(intakes)
     if filter_incomplete:
         intakes = typical_intakes(intakes)
-    observed = observed_tdee(window, method, filter_incomplete, logged_kcal_per_kg(profile, latest_trend))
+    kcal_per_kg = logged_kcal_per_kg(profile, latest_trend, logged_share, body_fat_density)
+    observed = observed_tdee(window, method, filter_incomplete, kcal_per_kg)
     slope = weight_slope(window, method)
 
     weight = observed_weight(logged) if observed is not None else 0.0
