@@ -16,9 +16,9 @@ python3.12 -m venv .venv
 
 | Module | What it does |
 | --- | --- |
-| `form_ml/energy.py` | Adaptive TDEE: Mifflin-St Jeor prior, smoothed trend weight, observed burn from logged intake and a Huber weight slope, blended from formula to observed over 7-21 logged days; days logged far below normal are left out |
+| `form_ml/energy.py` | Adaptive TDEE in logged calories: Mifflin-St Jeor prior, smoothed trend weight, observed burn from logged intake and a Huber weight slope converted at the user's body-fat energy density, blended from formula to observed over 7-21 logged days; days logged far below normal are left out |
 | `form_ml/targets.py` | Daily kcal, protein, carb and fat targets from the TDEE estimate and the user's goal, plus the one-line rationale |
-| `form_ml/synthetic.py` | Synthetic users with a known true TDEE, logging bias, noisy weigh-ins and missed days; `Realism` adds forgotten meals, weekends, water retention and multi-day gaps |
+| `form_ml/synthetic.py` | Synthetic users with a known true TDEE, logging bias, noisy weigh-ins and missed days; `Realism` adds forgotten meals, weekends, water retention and multi-day gaps; `Physiology` adds what real bodies do that the model does not assume |
 | `scripts/evaluate_energy.py` | Walk-forward evaluation against the static formula |
 
 These map onto `GET /today`: `daily_targets()` returns `targets`, `tdee_estimate`,
@@ -28,45 +28,74 @@ These map onto `GET /today`: `daily_targets()` returns `targets`, `tdee_estimate
 ## Current results
 
 ```bash
-.venv/bin/python scripts/evaluate_energy.py               # clean synthetic users
-.venv/bin/python scripts/evaluate_energy.py --realistic   # messy logs
+.venv/bin/python scripts/evaluate_energy.py                            # clean synthetic users
+.venv/bin/python scripts/evaluate_energy.py --realistic                # messy logs
+.venv/bin/python scripts/evaluate_energy.py --realistic --physiology   # messy logs, real bodies
 ```
 
-300 synthetic users over 84 days, from day 28 of history on. Each cell: mean absolute error of
-the predicted next-week weight change (kg/week) / error against the true TDEE in logged calories
-(kcal/day). Seeds 7 and 11.
+`--physiology` drops the model's own assumptions from the simulated bodies: a kilogram of weight
+change carries the Forbes/Hall energy density for that person's body fat instead of 7700 kcal,
+a deficit drains about 1.5 kg of glycogen-bound water in its first days, women carry about
+0.5 kg of extra water around menstruation, burn drops 150 kcal/day over the first three weeks
+of a deficit, and the share of food a user logs drifts. Before this the synthetic users obeyed
+exactly the rules the model assumed, so the evaluation could not see those rules fail.
 
-| Estimate | Clean, seed 7 | Clean, seed 11 | Realistic, seed 7 | Realistic, seed 11 |
-| --- | --- | --- | --- | --- |
-| Static formula (baseline) | 0.310 / 356 | 0.336 / 396 | 0.344 / 343 | 0.331 / 329 |
-| Version 1: least squares, every logged day | 0.113 / 106 | 0.111 / 108 | 0.212 / 216 | 0.220 / 215 |
-| Incomplete-day filter only | 0.114 / 109 | 0.112 / 112 | 0.202 / 192 | 0.208 / 188 |
-| Huber slope only | 0.114 / 107 | 0.113 / 110 | 0.211 / 214 | 0.219 / 213 |
-| Version 2 (default): both | 0.115 / 111 | 0.114 / 114 | 0.201 / 190 | 0.207 / 186 |
+300 synthetic users over 84 days. Error of the TDEE estimate against the user's true burn in
+logged calories (kcal/day, MAE), the number targets are built from. Seed 7; seed 11 is within
+about 10 kcal/day everywhere.
 
-Realistic logs roughly double version 1's error. Leaving out days logged under 60% of the
-user's normal does most of the recovery (about 12% less TDEE error); the Huber slope adds little,
-because retained water persists for days and looks like a trend rather than an outlier. On clean
-users version 2 costs about 4 kcal/day, the price of occasionally dropping a genuinely light day.
-The earlier report numbers (0.110 / 0.108 kg) were version 1 on clean users with the previous
-evaluation, which did not screen incomplete days in the week being predicted.
+| Estimate | Clean, days 7-21 | Clean, day 28+ | Realistic, day 28+ | Physiology, day 28+ | Realistic + physiology, days 7-21 | Realistic + physiology, day 28+ |
+| --- | --- | --- | --- | --- | --- | --- |
+| Static formula (baseline) | 347 | 355 | 342 | 423 | 393 | 418 |
+| Version 1 | 243 | 106 | 215 | 176 | 357 | 240 |
+| Version 2 | 246 | 111 | 190 | 183 | 363 | 220 |
+| Version 3 (default) | **170** | **88** | **152** | **107** | **227** | **158** |
 
-Closed-loop check (`tests/test_closed_loop.py`): synthetic users who eat at the model's targets
-with a lose goal lose a median 0.55% of body weight a week (5th-95th percentile 0.30-0.71%).
-Targets are in the user's logged calories, so the safety floor and the 1%-a-week loss cap are
-scaled into those units first. Without that scaling, 26% of under-logging users barely lost weight.
+Version 3 fixes two things:
 
-The smoothed trend lags real change for the first couple of weeks, so the observed burn uses a
-least-squares slope of the raw weigh-ins instead. The smoothed trend is still the weight to show
-users.
+- **Units.** The estimate is meant to be in logged calories, but version 2 subtracted the energy
+  stored in body mass in real calories, and its formula prior was in real calories too. For
+  someone who under-logs, that put the estimate high by roughly (share not logged) x deficit
+  once adaptive, and (share not logged) x TDEE while still on the formula. Both terms are now
+  scaled by `LOGGED_SHARE_PRIOR` (0.875; doubly labelled water studies find people log less
+  than they eat). Most of the early-days gain comes from this.
+- **Energy density.** Leaner people lose and gain proportionally more lean tissue, which holds
+  far less energy than fat, so a flat 7700 kcal/kg overstates the energy in their weight
+  change (median about 6,800 kcal/kg across the synthetic users). Body fat is estimated from
+  BMI, age and sex (Deurenberg 1991) and split with the Forbes curve (Hall 2008). The 1%-a-week
+  loss cap uses the same density.
 
-Caveat: even the realistic users follow the energy-balance rule the model assumes, with water
-and logging noise layered on top. Real bodies also shift glycogen and adapt their burn, so the
-team's own logs are the real test.
+Each fix alone gets part of the way (`units only` and `density only` in the script output);
+together they are better than either.
+
+The script also predicts next week's weight change from next week's logged intake. On that
+measure version 3 is slightly worse than version 2 (0.131 vs 0.115 kg/week clean, day 28+;
+0.242 vs 0.224 realistic + physiology). That is not better physics in version 2: its larger
+divisor (7700 in logged calories) shrinks the noisy next-week intake term, and plugging in each
+user's true logged share makes the forecast worse still. The app does not make this forecast,
+so the burn error is the number to watch.
+
+Closed loop (`tests/test_closed_loop.py`): synthetic users who eat at the model's targets with a
+lose goal now lose a median 0.71% of body weight a week (5th-95th percentile 0.35-0.95%),
+against 0.54% with version 2. Version 2 was delivering less than the planned 500 kcal deficit
+because its estimate ran high for dieters.
+
+What still goes wrong: the glycogen water lost when a diet starts reads as fat loss, so for a
+user who starts dieting on day one the estimate runs high through week four. The days 7-21
+column is mostly this.
+
+Caveat: even the physiology users are a model of a body. `LOGGED_SHARE_PRIOR` is set near the
+synthetic users' average, so its fit here is partly by construction; if the true share differs,
+the error grows by about (difference) x TDEE early on and (difference) x deficit later, which
+stays no worse than version 2 while the prior is within a factor of two. The team's own logs
+are the real test.
 
 ## Next steps
 
-- Kalman filter for the weight trend and burn together, with uncertainty reported alongside the
-  estimate; it should also handle lingering water better than the Huber slope
+- State-space (Kalman) model with fat, lean and a fast glycogen-water state, so the diet-start
+  water drop is not read as fat loss; it would also report uncertainty alongside the estimate
+  and handle missed days naturally
+- Learn each user's logged share from how weight responds to changes in their logged intake,
+  instead of one population prior
 - Per-user tuning of the 7-21 day ramp from how noisy their weigh-ins are
 - Training-day adjustment of carbohydrate targets
