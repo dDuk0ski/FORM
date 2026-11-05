@@ -5,8 +5,10 @@ import pytest
 
 from form_ml.energy import (
     KCAL_PER_KG,
+    LOGGED_SHARE_PRIOR,
     DayRecord,
     Profile,
+    energy_density,
     estimate_tdee,
     formula_tdee,
     observed_tdee,
@@ -66,10 +68,29 @@ def test_ramp_from_formula_to_observed():
     assert observed_weight(40) == 1
 
 
-def test_new_user_gets_formula_estimate():
+def test_new_user_gets_formula_estimate_in_logged_units():
     estimate = estimate_tdee(PROFILE, days([2400.0] * 5, [80.0] * 5))
     assert estimate.source == "formula"
-    assert estimate.tdee_kcal == pytest.approx(formula_tdee(PROFILE, 80.0))
+    assert estimate.formula_kcal == pytest.approx(formula_tdee(PROFILE, 80.0))
+    assert estimate.tdee_kcal == pytest.approx(formula_tdee(PROFILE, 80.0) * LOGGED_SHARE_PRIOR)
+
+
+def test_energy_density_rises_with_body_fat():
+    lean = Profile(sex="male", age=25, height_cm=180, weight_kg=68, activity_level="moderate")
+    heavy = Profile(sex="male", age=25, height_cm=180, weight_kg=120, activity_level="moderate")
+    assert energy_density(PROFILE) == pytest.approx(6459, abs=10)   # ~20% body fat
+    assert energy_density(lean) < energy_density(PROFILE) < energy_density(heavy) < 9440
+
+
+def test_dieter_who_under_logs_by_the_prior_gets_exact_burn_in_logged_units():
+    # Regression for the units bug: weight change is real energy, intake is logged energy.
+    true_tdee, real_intake = 2700.0, 2200.0
+    kg_per_day = (real_intake - true_tdee) / energy_density(PROFILE)
+    history = days([real_intake * LOGGED_SHARE_PRIOR] * 28, [80 + kg_per_day * i for i in range(28)])
+    estimate = estimate_tdee(PROFILE, history)
+    assert estimate.weight_on_observed == 1
+    # Small slack: the model takes density at today's trend weight, ~1.7 kg below the start.
+    assert estimate.tdee_kcal == pytest.approx(true_tdee * LOGGED_SHARE_PRIOR, abs=15)
 
 
 def test_converges_to_users_real_burn_in_logged_units():

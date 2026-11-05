@@ -19,6 +19,15 @@ Two guards against messy real logs (version 2):
 Because the observed value uses *logged* intake, a user who consistently under-logs gets a lower
 TDEE in the same units they log in. Targets set from it still move their real weight correctly,
 which is why logging does not have to be perfect.
+
+Units and energy density (version 3):
+- Everything is kept in logged calories. Weight change is energy in real calories, so the
+  stored-energy term is scaled by the share of food people typically log (LOGGED_SHARE_PRIOR);
+  so is the formula prior. Without this the estimate ran high by roughly (share not logged) x
+  (the user's deficit), and the day-one estimate by (share not logged) x TDEE.
+- A kilogram of weight change is not always 7700 kcal. Leaner people lose and gain more lean
+  tissue per kilogram, which holds far less energy than fat (Forbes; Hall 2008). The energy
+  density comes from body fat, which is estimated from BMI, age and sex (Deurenberg 1991).
 """
 
 from __future__ import annotations
@@ -29,7 +38,11 @@ from typing import Literal, Sequence
 
 import numpy as np
 
-KCAL_PER_KG = 7700.0
+KCAL_PER_KG = 7700.0                 # classic rule; kept as the reference value
+LOGGED_SHARE_PRIOR = 0.875           # people log ~12.5% less than they eat (doubly labelled water)
+FAT_KCAL_PER_KG = 9440.0             # Hall 2008
+LEAN_KCAL_PER_KG = 1816.0
+FORBES_C_KG = 10.4                   # Forbes partition constant
 TREND_ALPHA = 0.1
 WINDOW_DAYS = 28
 RAMP_START_DAYS = 7
@@ -73,7 +86,7 @@ class DayRecord:
 @dataclass(frozen=True)
 class TdeeEstimate:
     tdee_kcal: float
-    formula_kcal: float
+    formula_kcal: float              # real kcal; the prior used is this x LOGGED_SHARE_PRIOR
     observed_kcal: float | None
     weight_on_observed: float
     source: Literal["formula", "adaptive"]
@@ -88,6 +101,26 @@ def resting_rate(sex: Sex, weight_kg: float, height_cm: float, age: int) -> floa
     """Mifflin-St Jeor resting energy expenditure, kcal/day."""
     base = 10.0 * weight_kg + 6.25 * height_cm - 5.0 * age
     return base + 5.0 if sex == "male" else base - 161.0
+
+
+def body_fat_kg(sex: Sex, weight_kg: float, height_cm: float, age: int) -> float:
+    """Body fat estimated from BMI, age and sex (Deurenberg 1991), floored at 3 kg."""
+    bmi = weight_kg / (height_cm / 100) ** 2
+    pct = 1.2 * bmi + 0.23 * age - 10.8 * (sex == "male") - 5.4
+    return max(3.0, pct / 100 * weight_kg)
+
+
+def energy_density(profile: Profile, weight_kg: float | None = None) -> float:
+    """Real kcal per kg of weight change, from the Forbes share of lean tissue in that change."""
+    weight = profile.weight_kg if weight_kg is None else weight_kg
+    fat = body_fat_kg(profile.sex, weight, profile.height_cm, profile.age)
+    lean_share = FORBES_C_KG / (FORBES_C_KG + fat)
+    return lean_share * LEAN_KCAL_PER_KG + (1 - lean_share) * FAT_KCAL_PER_KG
+
+
+def logged_kcal_per_kg(profile: Profile, weight_kg: float | None = None) -> float:
+    """Logged kcal per kg of weight change: the factor between weight change and logged intake."""
+    return energy_density(profile, weight_kg) * LOGGED_SHARE_PRIOR
 
 
 def formula_tdee(profile: Profile, weight_kg: float | None = None) -> float:
@@ -168,16 +201,23 @@ def weight_slope(
 
 
 def observed_tdee(
-    days: Sequence[DayRecord], method: SlopeMethod = "robust", filter_incomplete: bool = True
+    days: Sequence[DayRecord],
+    method: SlopeMethod = "robust",
+    filter_incomplete: bool = True,
+    kcal_per_kg: float = KCAL_PER_KG,
 ) -> float | None:
-    """Mean logged intake minus energy stored in body mass, over the given days."""
+    """Mean logged intake minus energy stored in body mass, over the given days.
+
+    kcal_per_kg converts the weight slope into the units of the intake; estimate_tdee passes
+    the user's logged_kcal_per_kg.
+    """
     intakes = [d.kcal_in for d in days if d.kcal_in is not None]
     if filter_incomplete:
         intakes = typical_intakes(intakes)
     slope = weight_slope(days, method)
     if not intakes or slope is None:
         return None
-    return float(np.mean(intakes)) - slope * KCAL_PER_KG
+    return float(np.mean(intakes)) - slope * kcal_per_kg
 
 
 def observed_weight(logged_days: int) -> float:
@@ -197,17 +237,18 @@ def estimate_tdee(
     trend = trend_weights([d.weight_kg for d in history])
     latest_trend = next((t for t in reversed(trend) if t is not None), None)
     formula = formula_tdee(profile, latest_trend)
+    prior = formula * LOGGED_SHARE_PRIOR      # the formula is in real kcal; estimates are logged
 
     window = list(history[-window_days:])
     intakes = [d.kcal_in for d in window if d.kcal_in is not None]
     logged = len(intakes)
     if filter_incomplete:
         intakes = typical_intakes(intakes)
-    observed = observed_tdee(window, method, filter_incomplete)
+    observed = observed_tdee(window, method, filter_incomplete, logged_kcal_per_kg(profile, latest_trend))
     slope = weight_slope(window, method)
 
     weight = observed_weight(logged) if observed is not None else 0.0
-    tdee = formula if observed is None else (1 - weight) * formula + weight * observed
+    tdee = prior if observed is None else (1 - weight) * prior + weight * observed
 
     return TdeeEstimate(
         tdee_kcal=tdee,

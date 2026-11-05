@@ -1,7 +1,8 @@
 """Daily calorie and macro targets from a TDEE estimate, first version.
 
 Rules (deliberately simple, each one a number to tune later):
-- Goal offset: lose = 500 kcal deficit, capped so loss never exceeds 1% of body weight a week;
+- Goal offset: lose = 500 kcal deficit, capped so loss never exceeds 1% of body weight a week
+  (the cap uses the user's energy density per kg, not a flat 7700);
   maintain = 0; gain = 300 kcal surplus.
 - Floor: never below the resting rate, as a conservative stand-in for an energy-availability check
   (that check needs fat-free mass, which we do not collect).
@@ -17,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from .energy import KCAL_PER_KG, Profile, TdeeEstimate, resting_rate
+from .energy import KCAL_PER_KG, Profile, TdeeEstimate, energy_density, resting_rate
 
 Goal = Literal["lose", "maintain", "gain"]
 
@@ -48,9 +49,10 @@ def unit_scale(estimate: TdeeEstimate) -> float:
     return min(MAX_UNIT_SCALE, max(MIN_UNIT_SCALE, scale))
 
 
-def goal_offset(goal: Goal, weight_kg: float, scale: float = 1.0) -> float:
+def goal_offset(goal: Goal, weight_kg: float, scale: float = 1.0, kcal_per_kg: float = KCAL_PER_KG) -> float:
+    """kcal_per_kg is the real energy in a kg of weight change; daily_targets passes the user's."""
     if goal == "lose":
-        max_daily_deficit = MAX_WEEKLY_LOSS_FRACTION * weight_kg * KCAL_PER_KG / 7 * scale
+        max_daily_deficit = MAX_WEEKLY_LOSS_FRACTION * weight_kg * kcal_per_kg / 7 * scale
         return -min(DEFICIT_KCAL, max_daily_deficit)
     if goal == "gain":
         return SURPLUS_KCAL
@@ -74,7 +76,8 @@ def daily_targets(profile: Profile, goal: Goal, estimate: TdeeEstimate) -> Targe
     weight = estimate.trend_weight_kg or profile.weight_kg
     scale = unit_scale(estimate)
     floor = resting_rate(profile.sex, weight, profile.height_cm, profile.age) * scale
-    kcal = max(floor, estimate.tdee_kcal + goal_offset(goal, weight, scale))
+    offset = goal_offset(goal, weight, scale, energy_density(profile, weight))
+    kcal = max(floor, estimate.tdee_kcal + offset)
 
     protein_g = PROTEIN_G_PER_KG * weight
     fat_g = FAT_FRACTION * kcal / 9
