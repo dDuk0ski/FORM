@@ -1,5 +1,6 @@
 export { gapCloserFixture } from './gap-closer';
 export { nextSetFixture } from './next-set';
+export { pantryFixture } from './pantry';
 export { predictMealFixture } from './predict-meal';
 export { readinessFixture } from './readiness';
 export { receiptFixture } from './receipt';
