@@ -55,16 +55,22 @@ export default function PantryScreen() {
             >
               <Card>
                 <Row label={item.name} value={`${item.quantity} ${item.unit}`} />
-                {days !== null ? (
                   <Text
                     style={[
                       typography.caption,
                       { color: expired ? colors.danger : soon ? colors.warning : colors.textMuted },
                     ]}
                   >
-                    {expired ? 'Expired' : days === 0 ? 'Expires today' : days === 1 ? 'Expires in 1 day' : `Expires in ${days} days`}
+                    {days === null
+                      ? 'No expiration date'
+                      : expired
+                        ? 'Expired'
+                        : days === 0
+                          ? 'Expires today'
+                          : days === 1
+                            ? 'Expires in 1 day'
+                            : `Expires in ${days} days`}
                   </Text>
-                ) : null}
               </Card>
             </Pressable>
           );
