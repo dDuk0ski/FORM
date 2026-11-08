@@ -6,5 +6,6 @@ export { ProgressBar } from './ProgressBar';
 export { Row } from './Row';
 export { Screen } from './Screen';
 export { SearchInput } from './SearchInput';
+export { SegmentedControl } from './SegmentedControl';
 export { EmptyState, ErrorState, LoadingState } from './StateViews';
 export { StatTile } from './StatTile';

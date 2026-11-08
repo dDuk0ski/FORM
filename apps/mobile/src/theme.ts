@@ -14,9 +14,20 @@ const light = {
   success: '#1A7F37',
   warning: '#9A6700',
   danger: '#CF222E',
-
-  // Figma tokens (sampled from Christian's exports). Added alongside the originals so screens
-  // that use the tokens above look the same; restyled screens opt in to these.
+  protein: '#7C3AED',
+  carb: '#C2410C',
+  fat: '#0F766E',
+  // One accent per area of the brief, from Apple's system palette.
+  kcal: '#FA114F',
+  eat: '#FF9500',
+  train: '#5856D6',
+  readiness: '#34C759',
+  week: '#AF52DE',
+  alert: '#FF9500',
+  // Soft wash behind the daily brief.
+  briefStart: '#EEE9FF',
+  briefEnd: '#FFF1E6',
+  // Figma tokens (sampled from Christian's exports), used by the food screens.
   surfaceAlt: '#F9FAFB',
   cardBorder: '#E5E7EB',
   chipBorder: '#D1D5DB',
@@ -54,7 +65,17 @@ const dark: ColorTokens = {
   success: '#3FB950',
   warning: '#D29922',
   danger: '#F85149',
-
+  protein: '#A78BFA',
+  carb: '#FB923C',
+  fat: '#2DD4BF',
+  kcal: '#FF375F',
+  eat: '#FF9F0A',
+  train: '#7D7AFF',
+  readiness: '#30D158',
+  week: '#BF5AF2',
+  alert: '#FF9F0A',
+  briefStart: '#241F3D',
+  briefEnd: '#2E2219',
   // The Figma file has no dark frames, so these are chosen to match the light set's roles.
   surfaceAlt: '#121418',
   cardBorder: '#2C3038',
@@ -81,6 +102,16 @@ const dark: ColorTokens = {
 
 export const colors = { light, dark };
 
+/** A token at reduced opacity, for tinted icon wells, ring tracks and chips. */
+export function withAlpha(hex: string, alpha: number): string {
+  return (
+    hex +
+    Math.round(alpha * 255)
+      .toString(16)
+      .padStart(2, '0')
+  );
+}
+
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -94,7 +125,9 @@ export const radii = {
   sm: 6,
   md: 10,
   lg: 16,
-  xl: 24,
+  xl: 22,
+  /** 24: the Figma food card radius (Damjan's xl is 22). */
+  xlSoft: 24,
   sheet: 32,
   pill: 999,
 } as const;
@@ -106,6 +139,18 @@ export const typography = {
   label: { fontSize: 14, lineHeight: 18, fontWeight: '500' },
   caption: { fontSize: 12, lineHeight: 16, fontWeight: '400' },
   number: { fontSize: 32, lineHeight: 38, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  /** SF Rounded, for the big glanceable numbers. */
+  display: {
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '700',
+    fontFamily: 'ui-rounded',
+    fontVariant: ['tabular-nums'],
+  },
+  rounded: { fontSize: 20, lineHeight: 24, fontWeight: '600', fontFamily: 'ui-rounded' },
+  /** Small uppercase label above a section or tile. */
+  eyebrow: { fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 0.6 },
+  lead: { fontSize: 17, lineHeight: 24, fontWeight: '500' },
 } satisfies Record<string, TextStyle>;
 
 export type Theme = {
