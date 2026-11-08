@@ -17,14 +17,16 @@ Amounts must be 0.1 to 100 servings, or 1 to 5000 g for custom grams.
 
 ## On the Today tab
 
-The Today screen has a **Log food** button and renders `<TodayNutrition />` under it: the day's
-totals for all four macros with progress toward targets, and the list of logged foods.
+Today is Damjan's daily brief (from `ui/nutrition-demo`). Its **Meal** quick action opens the
+Log food modal (`router.push('/log-food')`). The **Log food** button on his `MealsCard`, in
+the Meals sheet (`/brief/meals`), does the same. `<TodayNutrition />` (the Nutrition card and the Logged today list) lives in the modal, not on
+Today. Covered by `src/__tests__/today-food-entry.test.tsx`.
 
-Known mismatch while the ML service is mocked: the cards above it (`Eaten`, `Calories left`) come
-from `GET /today`, which returns a fixed fixture, so they do not move when you log food. The
-`Nutrition` card is computed from the log and does. Once the backend is real and `GET /today`
-reads the same food logs, the two should agree. Until then, expect two different "eaten" numbers
-on this screen, and decide with the team which one the demo shows (question 2 in
+Known mismatch while the ML service is mocked: Today's Fuel and Meals tiles (`kcal left`,
+`kcal so far`) come from `GET /today`, which returns a fixed fixture, so they do not move when you
+log food. The modal's `Nutrition` card is computed from the log and does. Once the backend is real
+and `GET /today` reads the same food logs, the two should agree. Until then they show different
+"eaten" numbers. Decide with the team which one the demo shows (question 2 in
 `BACKEND_HANDOFF.md`).
 
 ## How it is built
