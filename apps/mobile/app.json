@@ -10,7 +10,11 @@
     "ios": {
       "supportsTablet": true
     },
-    "plugins": ["expo-router", "expo-font"],
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-status-bar"
+    ],
     "experiments": {
       "typedRoutes": true
     }
