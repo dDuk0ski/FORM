@@ -40,3 +40,7 @@ USING ((SELECT auth.uid()) = user_id);
 GRANT SELECT ON public.model_outputs TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.model_state TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.model_outputs TO service_role;
+
+CREATE TRIGGER model_state_set_updated_at
+BEFORE UPDATE ON public.model_state
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

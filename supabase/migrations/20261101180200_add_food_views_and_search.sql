@@ -1,6 +1,15 @@
 -- Stable key for nutrients, so views do not depend on display names.
+-- Rows that already exist get a code made from their name, so the column can be required.
 ALTER TABLE public.nutrients
-ADD COLUMN code VARCHAR UNIQUE;
+ADD COLUMN code VARCHAR;
+
+UPDATE public.nutrients
+SET code = TRIM(BOTH '_' FROM REGEXP_REPLACE(LOWER(name), '[^a-z0-9]+', '_', 'g'))
+WHERE code IS NULL;
+
+ALTER TABLE public.nutrients
+ALTER COLUMN code SET NOT NULL,
+ADD CONSTRAINT nutrients_code_unique UNIQUE (code);
 
 -- Macros per 100 g for every food. Unknown values stay null.
 CREATE VIEW public.food_macros
@@ -45,7 +54,8 @@ JOIN public.profiles p ON p.id = l.user_id
 LEFT JOIN public.food_macros m ON m.food_id = l.food_id
 WHERE l.deleted_at IS NULL;
 
--- Food search for the log screen. Prefix matches first, then shorter names.
+-- Food search for the log screen. Matches the name or the brand.
+-- Name prefix matches first, then other name matches, then brand-only matches, then shorter names.
 -- Returns at most 25 rows whatever max_results is.
 CREATE FUNCTION public.search_foods(query TEXT, max_results INTEGER DEFAULT 25)
 RETURNS TABLE (
@@ -70,7 +80,12 @@ AS $$
     FROM foods f
     LEFT JOIN food_macros m ON m.food_id = f.id
     WHERE f.name ILIKE '%' || query || '%'
-    ORDER BY (f.name ILIKE query || '%') DESC, LENGTH(f.name), f.name
+       OR f.brand ILIKE '%' || query || '%'
+    ORDER BY
+        (f.name ILIKE query || '%') DESC,
+        (f.name ILIKE '%' || query || '%') DESC,
+        LENGTH(f.name),
+        f.name
     LIMIT LEAST(GREATEST(max_results, 1), 25);
 $$;
 

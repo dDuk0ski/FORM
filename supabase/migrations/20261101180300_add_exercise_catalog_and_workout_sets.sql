@@ -25,6 +25,13 @@ ADD COLUMN progression_action VARCHAR,
 ADD CONSTRAINT workout_exercises_reps_range_check
     CHECK (prescribed_reps_min <= prescribed_reps_max);
 
+-- The original sets, reps and weight columns are replaced by the prescribed_* columns above
+-- (the plan) and workout_sets below (what was done). Nothing reads them.
+ALTER TABLE public.workout_exercises
+DROP COLUMN sets,
+DROP COLUMN reps,
+DROP COLUMN weight;
+
 -- What the user actually did, one row per set.
 CREATE TABLE public.workout_sets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -39,10 +46,14 @@ CREATE TABLE public.workout_sets (
 
     CONSTRAINT workout_sets_weight_kg_check CHECK (weight_kg >= 0),
     CONSTRAINT workout_sets_reps_check CHECK (reps >= 0),
-    CONSTRAINT workout_sets_rir_check CHECK (rir BETWEEN 0 AND 10)
+    CONSTRAINT workout_sets_rir_check CHECK (rir BETWEEN 0 AND 10),
+    CONSTRAINT workout_sets_set_index_check CHECK (set_index >= 1)
 );
 
-CREATE INDEX workout_sets_workout_exercise_idx ON public.workout_sets (workout_exercise_id);
+-- One live row per set number. Soft-deleted rows are left out, so a corrected set can reuse its number.
+CREATE UNIQUE INDEX workout_sets_exercise_set_index_unique
+ON public.workout_sets (workout_exercise_id, set_index)
+WHERE deleted_at IS NULL;
 
 ALTER TABLE public.workout_sets ENABLE ROW LEVEL SECURITY;
 

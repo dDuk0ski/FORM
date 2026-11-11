@@ -17,7 +17,7 @@ CREATE TABLE public.training_preferences (
         CHECK (experience IN ('beginner', 'intermediate', 'advanced')),
     CONSTRAINT training_preferences_split_check
         CHECK (split IN ('full_body', 'upper_lower', 'push_pull_legs', 'ppl_upper_lower', 'bro_split')),
-    CONSTRAINT training_preferences_days_check CHECK (days_per_week BETWEEN 2 AND 6),
+    CONSTRAINT training_preferences_days_check CHECK (days_per_week BETWEEN 1 AND 6),
     CONSTRAINT training_preferences_minutes_check CHECK (session_minutes BETWEEN 15 AND 180)
 );
 
@@ -44,3 +44,19 @@ WITH CHECK ((SELECT auth.uid()) = user_id);
 
 GRANT SELECT, INSERT, UPDATE ON public.training_preferences TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.training_preferences TO service_role;
+
+-- Keep updated_at current on every change, not only on insert.
+CREATE FUNCTION public.set_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER training_preferences_set_updated_at
+BEFORE UPDATE ON public.training_preferences
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
