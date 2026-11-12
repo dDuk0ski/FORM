@@ -6,6 +6,8 @@ import { useTheme } from '@/theme';
 
 type ScreenProps = {
   title: string;
+  /** Small uppercase line above the title, such as today's date. */
+  eyebrow?: string;
   children?: ReactNode;
   /** Wrap content in a ScrollView. Turn off for screens that render their own FlatList. */
   scroll?: boolean;
@@ -13,13 +15,20 @@ type ScreenProps = {
   edges?: Edge[];
 };
 
-export function Screen({ title, children, scroll = true, edges = ['top'] }: ScreenProps) {
+export function Screen({ title, eyebrow, children, scroll = true, edges = ['top'] }: ScreenProps) {
   const { colors, spacing, typography } = useTheme();
   const content = (
     <View style={{ padding: spacing.lg, gap: spacing.lg }}>
-      <Text accessibilityRole="header" style={[typography.title, { color: colors.text }]}>
-        {title}
-      </Text>
+      <View>
+        {eyebrow ? (
+          <Text style={[typography.eyebrow, { color: colors.textMuted }]}>
+            {eyebrow.toUpperCase()}
+          </Text>
+        ) : null}
+        <Text accessibilityRole="header" style={[typography.title, { color: colors.text }]}>
+          {title}
+        </Text>
+      </View>
       {children}
     </View>
   );

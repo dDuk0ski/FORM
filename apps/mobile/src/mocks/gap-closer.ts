@@ -15,7 +15,7 @@ export const gapCloserFixture: GapCloserResponse = {
         },
         { food_id: 'f_1177', name: 'Chicken breast, cooked', grams: 120, pantry_item_id: 'p_91' },
       ],
-      totals: { kcal: 420, protein_g: 58, carb_g: 14, fat_g: 6 },
+      totals: { kcal: 316, protein_g: 58, carb_g: 7, fat_g: 5 },
       fit: 0.93,
       reason: 'Uses chicken expiring tomorrow.',
     },
