@@ -1,8 +1,8 @@
 import { fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 
-// Smoke test: the real app directory renders, lands on Today, and shows the daily brief
-// built from the mocked GET /today numbers (EXPO_PUBLIC_USE_MOCKS is unset, so mocks are on).
-it('renders the daily brief on Today with mocked data', async () => {
+// Smoke test: the real app directory renders, lands on Today, and shows the mocked
+// GET /today numbers (EXPO_PUBLIC_USE_MOCKS is unset, so mocks are on).
+it('renders the Today tab with mocked data', async () => {
   await renderRouter('src/app');
 
   expect(screen.getByRole('header', { name: 'Today' })).toBeOnTheScreen();
