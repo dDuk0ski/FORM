@@ -12,3 +12,9 @@ export type Credentials = {
     email: string;
     password: string;
 };
+
+// what the verify email screen sends
+export type VerifyEmailInput = {
+    email: string;
+    code: string;
+};

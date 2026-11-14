@@ -1,4 +1,4 @@
-import type { AuthSession, AuthUser, Credentials } from '@/types/auth';
+import type { AuthSession, AuthUser, Credentials, VerifyEmailInput } from '@/types/auth';
 
 // Mock auth service. Keeps the session in memory so it resets on app reload (you start signed out)
 // TODO(auth): replace each function body with supabase calls
@@ -24,5 +24,16 @@ export const auth = {
 
     async signOut(): Promise<void> {
         session = null;
+    },
+
+    async verifyEmail(input: VerifyEmailInput): Promise<AuthSession> {
+        // TEMP: any 6 digit code works except 000000 so errors can be tested
+        if (input.code === '000000') throw new Error('Invalid or expired code');
+        session = { user: { id: 'u1', email: input.email } };
+        return session;
+    },
+
+    async resendCode(email: string): Promise<void> {
+        void email; // mock: nothing to send.
     },
 };

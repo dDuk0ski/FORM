@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components';
+import { useSignUp } from '@/hooks/useSession';
 import { radii, spacing, typography, useTheme, withAlpha } from '@/theme';
 
 // Create account: second screen of onboarding.
@@ -25,6 +26,7 @@ type FieldProps = {
     keyboardType?: KeyboardTypeOptions;
     secureTextEntry?: boolean;
     hint?: string;
+    error?: string;
     rightAccessory?: ReactNode;
 };
 
@@ -46,6 +48,24 @@ function passwordStrength(password: string): string {
     return STRENGTH_LABELS[met];
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type SignUpErrors = { email?: string; password?: string };
+
+function validateSignUp(email: string, password: string): SignUpErrors {
+    const errors: SignUpErrors = {};
+
+    if (email.trim() === '') errors.email = 'Enter your email';
+    else if (!EMAIL_PATTERN.test(email.trim())) errors.email = 'Enter a valid email address';
+
+    if (password === '') errors.password = 'Enter a password';
+    else if (!PASSWORD_RULES.every((rule) => rule.test(password))) {
+        errors.password = 'Meet all the password requirements below';
+    }
+
+    return errors;
+}
+
 function Field({
     label,
     value,
@@ -54,6 +74,7 @@ function Field({
     keyboardType = 'default',
     secureTextEntry = false,
     hint,
+    error,
     rightAccessory,
 }: FieldProps) {
     const { colors } = useTheme();
@@ -69,7 +90,7 @@ function Field({
           flexDirection: 'row',
           alignItems: 'center',
           borderWidth: 1,
-          borderColor: colors.border,
+          borderColor: error ? colors.danger : colors.border,
           borderRadius: radii.md,
         }}
       >
@@ -92,6 +113,11 @@ function Field({
         />
         {rightAccessory}
       </View>
+      {error ? (
+        <Text accessibilityRole="alert" style={[typography.caption, { color: colors.danger }]}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -132,7 +158,38 @@ export default function SignUpScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+    const signUp = useSignUp();
     const ruleResults = PASSWORD_RULES.map((rule) => ({ ...rule, met: rule.test(password) }));
+    // errors only appear after the first submit attempt, then update live
+    const errors: SignUpErrors = submitted ? validateSignUp(email, password) : {};
+
+    const handleEmailChange = (text: string) => {
+      if (signUp.isError) signUp.reset();
+      setEmail(text);
+    };
+
+    const handlePasswordChange = (text: string) => {
+      if (signUp.isError) signUp.reset();
+      setPassword(text);
+    };
+
+    const handleSubmit = () => {
+      setSubmitted(true);
+      if (signUp.isPending) return;
+
+      const cleanEmail = email.trim();
+      const found = validateSignUp(cleanEmail, password);
+      if (found.email || found.password) return;
+
+      signUp.mutate(
+        { email: cleanEmail, password },
+        {
+          onSuccess: () =>
+            router.push({ pathname: '/verify-email', params: { email: cleanEmail } }),
+        },
+      );
+    };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.primary }}>
@@ -190,16 +247,18 @@ export default function SignUpScreen() {
               <Field
                 label="Email"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={handleEmailChange}
                 placeholder="you@example.com"
                 keyboardType="email-address"
+                error={errors.email}
               />
               <Field
                 label="Password"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={handlePasswordChange}
                 placeholder="Create a password"
                 hint={passwordStrength(password)}
+                error={errors.password}
                 secureTextEntry={!showPassword}
                 rightAccessory={
                   <Pressable
@@ -225,10 +284,16 @@ export default function SignUpScreen() {
               ))}
             </View>
 
-            <Button
-              title="Create Account"
-              onPress={() => router.push({ pathname: '/verify-email', params: { email } })}
-            />
+            <Button title="Create Account" onPress={handleSubmit} disabled={signUp.isPending} />
+
+            {signUp.isError ? (
+              <Text
+                accessibilityRole="alert"
+                style={[typography.label, { color: colors.danger, textAlign: 'center' }]}
+              >
+                {signUp.error.message}
+              </Text>
+            ) : null}
 
             <Text style={[typography.label, { color: colors.textMuted, textAlign: 'center' }]}>
               Already have an account?{' '}

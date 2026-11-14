@@ -7,6 +7,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Button } from '@/components';
 import { radii, spacing, typography, useTheme, withAlpha } from '@/theme';
 
+import { useResendCode, useVerifyEmail } from '@/hooks/useSession';
+
 const CODE_LENGTH = 6;
 
 const RESEND_SECONDS = 30;
@@ -25,6 +27,8 @@ export default function VerifyEmailScreen() {
   const [code, setCode] = useState('');
   const [codeFocused, setCodeFocused] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
+  const resend = useResendCode();
+  const verify = useVerifyEmail();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
@@ -50,9 +54,19 @@ export default function VerifyEmailScreen() {
   }, [secondsLeft]);
 
   const handleResend = () => {
-    // TODO(onboarding): ask the service to send a new code
-    setCode('');
-    setSecondsLeft(RESEND_SECONDS);
+    if (resend.isPending) return;
+    resend.mutate(email, {
+      onSuccess: () => {
+        verify.reset();
+        setCode('');
+        setSecondsLeft(RESEND_SECONDS);
+      },
+    });
+  };
+
+  const handleVerify = () => {
+    if (verify.isPending) return;
+    verify.mutate({ email, code });
   };
 
   return (
@@ -95,50 +109,69 @@ export default function VerifyEmailScreen() {
               {'\n'}Enter it below to verify your account.
             </Text>
 
-            <View style={{ marginTop: spacing.md }}>
-              {/* the six boxes only display the code */}
-              <View
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-                style={{ flexDirection: 'row', gap: spacing.sm }}
-              >
-                {Array.from({ length: CODE_LENGTH }, (_, index) => {
-                  const active = codeFocused && index === Math.min(code.length, CODE_LENGTH - 1);
-                  return (
-                    <View
-                      key={index}
-                      style={{
-                        flex: 1,
-                        aspectRatio: 1,
-                        borderWidth: 1,
-                        borderColor: active ? colors.primary : colors.border,
-                        borderRadius: radii.md,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text style={[typography.title, { color: colors.text }]}>
-                        {code.charAt(index)}
-                      </Text>
-                    </View>
-                  );
-                })}
+            <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+              <View>
+                {/* the six boxes only display the code */}
+                <View
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                  style={{ flexDirection: 'row', gap: spacing.sm }}
+                >
+                  {Array.from({ length: CODE_LENGTH }, (_, index) => {
+                    const active = codeFocused && index === Math.min(code.length, CODE_LENGTH - 1);
+                    return (
+                      <View
+                        key={index}
+                        style={{
+                          flex: 1,
+                          aspectRatio: 1,
+                          borderWidth: 1,
+                          borderColor: verify.isError
+                            ? colors.danger
+                            : active
+                              ? colors.primary
+                              : colors.border,
+                          borderRadius: radii.md,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Text style={[typography.title, { color: colors.text }]}>
+                          {code.charAt(index)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* invisible input stretched over the boxes, so tapping them focuses it */}
+                <TextInput
+                  value={code}
+                  onChangeText={(text) => {
+                    if (verify.isError) verify.reset();
+                    setCode(text.replace(/\D/g, '').slice(0, CODE_LENGTH));
+                  }}
+                  keyboardType="number-pad"
+                  textContentType="oneTimeCode"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  caretHidden
+                  onFocus={() => setCodeFocused(true)}
+                  onBlur={() => setCodeFocused(false)}
+                  accessibilityLabel="Verification code"
+                  style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: 0 }}
+                />
               </View>
 
-              {/* invisible input stretched over the boxes, so tapping them focuses it */}
-              <TextInput
-                value={code}
-                onChangeText={(text) => setCode(text.replace(/\D/g, '').slice(0, CODE_LENGTH))}
-                keyboardType="number-pad"
-                textContentType="oneTimeCode"
-                autoComplete="one-time-code"
-                autoFocus
-                caretHidden
-                onFocus={() => setCodeFocused(true)}
-                onBlur={() => setCodeFocused(false)}
-                accessibilityLabel="Verification code"
-                style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: 0 }}
-              />
+              {/* always rendered so the layout height never changes when an error appears */}
+              <Text
+                accessibilityRole={verify.isError ? 'alert' : undefined}
+                accessibilityElementsHidden={!verify.isError}
+                importantForAccessibility={verify.isError ? 'yes' : 'no-hide-descendants'}
+                style={[typography.label, { color: colors.danger }]}
+              >
+                {verify.isError ? verify.error.message : '\u00A0'}
+              </Text>
             </View>
 
             <Text style={[typography.label, { color: colors.textMuted }]}>
@@ -157,11 +190,18 @@ export default function VerifyEmailScreen() {
                 </Text>
               )}
             </Text>
+            {resend.isError ? (
+              <Text style={[typography.label, { color: colors.danger }]}>{resend.error.message}</Text>
+            ) : null}
           </View>
 
           {/* bottom block */}
           <View style={{ gap: spacing.md, marginBottom: spacing.xs }}>
-            <Button title="Verify" onPress={() => {}} disabled={code.length < CODE_LENGTH} />
+            <Button
+              title="Verify"
+              onPress={handleVerify}
+              disabled={code.length < CODE_LENGTH || verify.isPending}
+            />
             <Text
               accessibilityRole="link"
               onPress={() => router.back()}
