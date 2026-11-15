@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-import argparse
-import json
+# JSON file loading and output are disabled; see TODO(DATABASE) markers.
+
 import math
 import random
 import uuid
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
 from typing import Any
 
-BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_EXERCISE_FILE = BASE_DIR / "normalized_exercises.json"
-DEFAULT_OUTPUT_FILE = BASE_DIR / "example_workouts.json"
-DEFAULT_RESULT_FILE = BASE_DIR / "example_workout_results.json"
+# LEGACY JSON FILE CONFIGURATION (disabled):
+# import argparse
+# import json
+# from pathlib import Path
+# BASE_DIR = Path(__file__).resolve().parent
+# DEFAULT_EXERCISE_FILE = BASE_DIR / "normalized_exercises.json"
+# DEFAULT_OUTPUT_FILE = BASE_DIR / "example_workouts.json"
+# DEFAULT_RESULT_FILE = BASE_DIR / "example_workout_results.json"
 
 
 @dataclass
@@ -115,52 +118,119 @@ class BayesianPosterior:
 class ExerciseDatabase:
     REQUIRED_FIELDS = ("id", "name", "classification", "equipment", "muscles", "movement")
 
-    def __init__(self, path: str | Path):
-        self.path = Path(path).expanduser().resolve()
-        if not self.path.exists():
-            raise FileNotFoundError(f"Exercise database not found: {self.path}")
-        try:
-            with self.path.open("r", encoding="utf-8-sig") as file:
-                data = json.load(file)
-        except json.JSONDecodeError as error:
-            raise ValueError(f"Invalid JSON in {self.path}: {error}") from error
-        if isinstance(data, dict):
-            data = data.get("exercises")
-        if not isinstance(data, list):
-            raise ValueError("normalized_exercises.json must be a JSON list or an object containing an 'exercises' list.")
+    def __init__(self, exercise_records: list[dict[str, Any]]):
+        """
+        Initialize from records supplied by the application's database layer.
+
+        TODO(DATABASE): Replace caller-supplied records with a repository query.
+        Map database rows to the normalized exercise dictionary shape expected
+        by this generator.
+        """
+        self.path = None
+        if not isinstance(exercise_records, list):
+            raise TypeError("exercise_records must be a list of exercise dictionaries.")
+
         self.exercises = []
         self.rejected_records = []
         seen_ids = set()
-        for index, item in enumerate(data):
+
+        for index, item in enumerate(exercise_records):
             problems = self.validate_record(item)
             if problems:
                 self.rejected_records.append({"index": index, "problems": problems})
                 continue
+
             exercise_id = str(item["id"])
             if exercise_id in seen_ids:
-                self.rejected_records.append({"index": index, "problems": [f"duplicate exercise id: {exercise_id}"]})
+                self.rejected_records.append({
+                    "index": index,
+                    "problems": [f"duplicate exercise id: {exercise_id}"],
+                })
                 continue
+
             seen_ids.add(exercise_id)
             normalized = dict(item)
             normalized["id"] = exercise_id
             normalized["name"] = str(item["name"]).strip()
             normalized["equipment"] = self._as_string_list(item.get("equipment"))
             normalized["muscles"] = dict(item.get("muscles") or {})
+
             for key in ("primary", "secondary", "groups"):
-                normalized["muscles"][key] = self._as_string_list(normalized["muscles"].get(key))
+                normalized["muscles"][key] = self._as_string_list(
+                    normalized["muscles"].get(key)
+                )
+
             normalized["classification"] = dict(item.get("classification") or {})
             normalized["movement"] = dict(item.get("movement") or {})
-            normalized["movement"]["pattern"] = self._optional_string(normalized["movement"].get("pattern"))
+            normalized["movement"]["pattern"] = self._optional_string(
+                normalized["movement"].get("pattern")
+            )
             normalized["movement"]["compound"] = normalized["movement"].get("compound")
             self.exercises.append(normalized)
+
         if not self.exercises:
             examples = self.rejected_records[:5]
-            raise ValueError(f"No valid exercises were loaded from {self.path}. First rejected records: {examples}")
+            raise ValueError(
+                "No valid exercises were supplied by the database adapter. "
+                f"First rejected records: {examples}"
+            )
+
         self.by_id = {item["id"]: item for item in self.exercises}
         self.category_counts = {}
         for item in self.exercises:
-            category = str((item.get("classification") or {}).get("category") or "uncategorized")
+            category = str(
+                (item.get("classification") or {}).get("category") or "uncategorized"
+            )
             self.category_counts[category] = self.category_counts.get(category, 0) + 1
+
+    # LEGACY JSON LOADER RETAINED FOR REFERENCE, BUT DISABLED.
+    # TODO(DATABASE): Delete after the database repository is connected.
+#     def __init__(self, path: str | Path):
+#         self.path = Path(path).expanduser().resolve()
+#         if not self.path.exists():
+#             raise FileNotFoundError(f"Exercise database not found: {self.path}")
+#         try:
+#             with self.path.open("r", encoding="utf-8-sig") as file:
+#                 data = json.load(file)
+#         except json.JSONDecodeError as error:
+#             raise ValueError(f"Invalid JSON in {self.path}: {error}") from error
+#         if isinstance(data, dict):
+#             data = data.get("exercises")
+#         if not isinstance(data, list):
+#             raise ValueError("normalized_exercises.json must be a JSON list or an object containing an 'exercises' list.")
+#         self.exercises = []
+#         self.rejected_records = []
+#         seen_ids = set()
+#         for index, item in enumerate(data):
+#             problems = self.validate_record(item)
+#             if problems:
+#                 self.rejected_records.append({"index": index, "problems": problems})
+#                 continue
+#             exercise_id = str(item["id"])
+#             if exercise_id in seen_ids:
+#                 self.rejected_records.append({"index": index, "problems": [f"duplicate exercise id: {exercise_id}"]})
+#                 continue
+#             seen_ids.add(exercise_id)
+#             normalized = dict(item)
+#             normalized["id"] = exercise_id
+#             normalized["name"] = str(item["name"]).strip()
+#             normalized["equipment"] = self._as_string_list(item.get("equipment"))
+#             normalized["muscles"] = dict(item.get("muscles") or {})
+#             for key in ("primary", "secondary", "groups"):
+#                 normalized["muscles"][key] = self._as_string_list(normalized["muscles"].get(key))
+#             normalized["classification"] = dict(item.get("classification") or {})
+#             normalized["movement"] = dict(item.get("movement") or {})
+#             normalized["movement"]["pattern"] = self._optional_string(normalized["movement"].get("pattern"))
+#             normalized["movement"]["compound"] = normalized["movement"].get("compound")
+#             self.exercises.append(normalized)
+#         if not self.exercises:
+#             examples = self.rejected_records[:5]
+#             raise ValueError(f"No valid exercises were loaded from {self.path}. First rejected records: {examples}")
+#         self.by_id = {item["id"]: item for item in self.exercises}
+#         self.category_counts = {}
+#         for item in self.exercises:
+#             category = str((item.get("classification") or {}).get("category") or "uncategorized")
+#             self.category_counts[category] = self.category_counts.get(category, 0) + 1
 
     @staticmethod
     def _as_string_list(value: Any) -> list[str]:
@@ -972,52 +1042,91 @@ def serialize_workouts(workouts: list[Workout]) -> list[dict[str, Any]]:
     return [asdict(workout) for workout in workouts]
 
 
-def write_json(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as file:
-        json.dump(data, file, indent=2, ensure_ascii=False)
+def build_workout_generator(
+    exercise_records: list[dict[str, Any]],
+    seed: int | None = 42,
+) -> WorkoutGenerator:
+    """
+    Create the generator from exercise records retrieved by the application.
+
+    TODO(DATABASE): Replace exercise_records with a call to the exercise
+    repository once the database connection/service is implemented.
+    """
+    catalog = ExerciseDatabase(exercise_records)
+    return WorkoutGenerator(catalog, seed=seed)
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate FORM workouts from normalized_exercises.json.")
-    parser.add_argument("--exercises", type=Path, default=DEFAULT_EXERCISE_FILE, help="Path to normalized_exercises.json")
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_FILE, help="Output path for generated workouts JSON")
-    parser.add_argument("--results", type=Path, default=DEFAULT_RESULT_FILE, help="Output path for the workout result schema JSON")
-    return parser.parse_args()
-
-
-def main() -> None:
-    args = parse_args()
-    database = ExerciseDatabase(args.exercises)
-    generated = []
-    for request in create_example_requests():
-        generator = WorkoutGenerator(database, seed=request.seed)
-        workouts = generator.generate_program(request)
-        generated.append({"request": asdict(request), "workouts": serialize_workouts(workouts), "weekly_volume": generator.last_weekly_volume_report})
-    write_json(args.output, generated)
-    result = WorkoutResult(workout_id="example_workout", completed=True, notes="Example result schema. Populate this with real workout results after a user completes a workout.")
-    write_json(args.results, asdict(result))
-    print(f"Exercise database: {database.path}")
-    print(f"Loaded exercises: {len(database.exercises)}")
-    print(f"Category counts: {json.dumps(database.category_counts, sort_keys=True)}")
-    print(f"Rejected records: {len(database.rejected_records)}")
-    if database.rejected_records:
-        for record in database.rejected_records[:10]:
-            print(f"  Rejected record {record['index']}: {'; '.join(record['problems'])}")
-    print(f"Generated {sum(len(item['workouts']) for item in generated)} workouts across {len(generated)} programs.")
-    print(f"Workout file: {args.output.resolve()}")
-    print(f"Result schema: {args.results.resolve()}")
-    for program in generated:
-        request = program["request"]
-        report = program["weekly_volume"]
-        print(f"\n{request['goal']} | {request['experience']} | {request['split']} | {len(program['workouts'])} days")
-        for workout in program["workouts"]:
-            status = "PASS" if workout["validation"]["valid"] else "FAIL"
-            print(f"  Day {workout['training_day']} {workout['name']}: {len(workout['exercises'])} exercises, {workout['estimated_minutes']} min, {status}")
-        print(f"  Weekly volume targets met: {report['all_targets_met']}")
-        for muscle, values in report["muscles"].items():
-            print(f"    {muscle}: {values['allocated_sets']}/{values['target_sets']} ({values['status']})")
-
-
-if __name__ == "__main__":
-    main()
+# TODO(DATABASE): Implement the database integration service:
+# 1. Retrieve the authenticated user's profile and workout preferences.
+# 2. Retrieve eligible exercises from the exercise table.
+# 3. Map each exercise row to the normalized fields expected by ExerciseDatabase:
+#    id, name, classification, equipment, muscles, and movement.
+# 4. Retrieve the user's saved split rotation index for the selected split.
+# 5. Construct WorkoutRequest using the user's persisted settings.
+# 6. Call generate_program(request).
+# 7. Persist generated workouts and their exercise rows with database foreign keys.
+# 8. Persist validation and weekly-volume reports if the schema supports them.
+# 9. Return persisted workout IDs and workout details to the mobile application.
+#
+# TODO(DATABASE): When a workout is completed, persist actual sets, reps, load,
+# completion status, and adherence/data-quality information.
+#
+# TODO(DATABASE): Advance the user's split rotation only after a workout is
+# confirmed complete. Use advance_profile_split_rotation() and persist the
+# resulting index in the user's profile/preferences record.
+#
+# TODO(DATABASE): Wrap program persistence in a database transaction so a
+# partially saved program cannot leave the user's schedule inconsistent.
+#
+# LEGACY JSON OUTPUT / COMMAND-LINE WORKFLOW RETAINED BELOW AS COMMENTS.
+# Replace it with database reads and writes when the app service is connected.
+#
+# def write_json(path: Path, data: Any) -> None:
+#     path.parent.mkdir(parents=True, exist_ok=True)
+#     with path.open("w", encoding="utf-8") as file:
+#         json.dump(data, file, indent=2, ensure_ascii=False)
+#
+#
+# def parse_args() -> argparse.Namespace:
+#     parser = argparse.ArgumentParser(description="Generate FORM workouts from normalized_exercises.json.")
+#     parser.add_argument("--exercises", type=Path, default=DEFAULT_EXERCISE_FILE, help="Path to normalized_exercises.json")
+#     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_FILE, help="Output path for generated workouts JSON")
+#     parser.add_argument("--results", type=Path, default=DEFAULT_RESULT_FILE, help="Output path for the workout result schema JSON")
+#     return parser.parse_args()
+#
+#
+# def main() -> None:
+#     args = parse_args()
+#     database = ExerciseDatabase(args.exercises)
+#     generated = []
+#     for request in create_example_requests():
+#         generator = WorkoutGenerator(database, seed=request.seed)
+#         workouts = generator.generate_program(request)
+#         generated.append({"request": asdict(request), "workouts": serialize_workouts(workouts), "weekly_volume": generator.last_weekly_volume_report})
+#     write_json(args.output, generated)
+#     result = WorkoutResult(workout_id="example_workout", completed=True, notes="Example result schema. Populate this with real workout results after a user completes a workout.")
+#     write_json(args.results, asdict(result))
+#     print(f"Exercise database: {database.path}")
+#     print(f"Loaded exercises: {len(database.exercises)}")
+#     print(f"Category counts: {json.dumps(database.category_counts, sort_keys=True)}")
+#     print(f"Rejected records: {len(database.rejected_records)}")
+#     if database.rejected_records:
+#         for record in database.rejected_records[:10]:
+#             print(f"  Rejected record {record['index']}: {'; '.join(record['problems'])}")
+#     print(f"Generated {sum(len(item['workouts']) for item in generated)} workouts across {len(generated)} programs.")
+#     print(f"Workout file: {args.output.resolve()}")
+#     print(f"Result schema: {args.results.resolve()}")
+#     for program in generated:
+#         request = program["request"]
+#         report = program["weekly_volume"]
+#         print(f"\n{request['goal']} | {request['experience']} | {request['split']} | {len(program['workouts'])} days")
+#         for workout in program["workouts"]:
+#             status = "PASS" if workout["validation"]["valid"] else "FAIL"
+#             print(f"  Day {workout['training_day']} {workout['name']}: {len(workout['exercises'])} exercises, {workout['estimated_minutes']} min, {status}")
+#         print(f"  Weekly volume targets met: {report['all_targets_met']}")
+#         for muscle, values in report["muscles"].items():
+#             print(f"    {muscle}: {values['allocated_sets']}/{values['target_sets']} ({values['status']})")
+#
+#
+# if __name__ == "__main__":
+#     main()
