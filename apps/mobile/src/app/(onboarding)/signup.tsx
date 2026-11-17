@@ -82,7 +82,9 @@ function Field({
   return (
     <View style={{ gap: spacing.xs }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={[typography.eyebrow, { color: colors.textMuted }]}>{label.toUpperCase()}</Text>
+        <Text style={[typography.label, { color: colors.textMuted, textTransform: 'none' }]}>
+          {label}
+        </Text>
         {hint ? <Text style={[typography.caption, { color: colors.textMuted }]}>{hint}</Text> : null}
       </View>
       <View
