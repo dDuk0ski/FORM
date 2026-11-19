@@ -1,5 +1,6 @@
 export type Gender = 'male' | 'female' | 'other';
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'very active';
+export type MacroPreset = 'balanced' | 'high-protein' | 'low-carb';
 
 export type ProfileInput = {
     name: string;
@@ -14,8 +15,16 @@ export type BodyStatsInput = {
     activity: ActivityLevel;
 };
 
+export type TargetsInput = {
+    calories: number;
+    preset: MacroPreset | null;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+};
+
 export type SetupData = {
     profile?: ProfileInput;
     bodyStats?: BodyStatsInput;
+    targets?: TargetsInput;
 };
-

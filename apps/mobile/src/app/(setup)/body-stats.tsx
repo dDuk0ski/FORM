@@ -7,7 +7,6 @@ import { router } from 'expo-router';
 
 import { useSaveSetupStep } from '@/hooks/useSetup';
 import type { ActivityLevel } from '@/types/setup';
-import { useCompleteOnboarding } from '@/hooks/useOnboarding';
 import { radii, spacing, typography, useTheme, withAlpha } from '@/theme';
 import { Button } from '@/components';
 
@@ -72,8 +71,6 @@ export default function SetupBodyStatsScreen() {
     const errors: BodyStatsErrors = submitted ? validateBodyStats(values, activity) : {};
     const saveStep = useSaveSetupStep();
     const inputRefs = useRef<Partial<Record<FieldKey, ComponentRef<typeof TextInput> | null>>>({});
-    // TEMP: skip finishes onboarding
-    const completeOnboarding = useCompleteOnboarding();
 
     const handleContinue = () => {
         setSubmitted(true);
@@ -128,7 +125,7 @@ export default function SetupBodyStatsScreen() {
                     </View>
 
                     <Pressable
-                        onPress={() => completeOnboarding.mutate()}
+                        onPress={() => router.push('/targets')}
                         accessibilityRole="button"
                         hitSlop={12}
                     >

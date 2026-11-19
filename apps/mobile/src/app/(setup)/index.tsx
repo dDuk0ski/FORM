@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
 
-import { useCompleteOnboarding } from '@/hooks/useOnboarding';
 import { useSaveSetupStep } from '@/hooks/useSetup';
 import type { Gender } from '@/types/setup';
 import { radii, spacing, typography, useTheme, withAlpha } from '@/theme';
@@ -78,8 +77,7 @@ export default function SetupProfileScreen() {
     const [submitted, setSubmitted] = useState(false);
     const errors: ProfileErrors = submitted ? validateProfile(name, gender) : {};
     const saveStep = useSaveSetupStep();
-    // TEMP: skip finishes onboarding
-    const completeOnboarding = useCompleteOnboarding();
+
     // TODO(setup): upload and save photo
     const handleUploadPhoto = () => {};
 
@@ -121,7 +119,7 @@ export default function SetupProfileScreen() {
           </View>
 
           <Pressable
-            onPress={() => completeOnboarding.mutate()}
+            onPress={() => router.push('/body-stats')}
             accessibilityRole="button"
             hitSlop={12}
           >
