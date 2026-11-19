@@ -15,23 +15,29 @@ app = FastAPI(
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     error_codes = {
-        400: "BAD_REQUEST",
-        401: "UNAUTHORIZED",
-        403: "FORBIDDEN",
-        404: "NOT_FOUND",
-        405: "METHOD_NOT_ALLOWED",
-        500: "INTERNAL_SERVER_ERROR",
-        502: "BAD_GATEWAY",
+        400: "bad_request",
+        401: "unauthorized",
+        403: "forbidden",
+        404: "not_found",
+        405: "method_not_allowed",
+        422: "invalid_request",
+        500: "internal_error",
+        502: "database_error",
+        503: "model_unavailable",
     }
+
+    # A route can pass {"code": ..., "message": ...} as the detail to pick its own code.
+    if isinstance(exc.detail, dict):
+        error = exc.detail
+    else:
+        error = {
+            "code": error_codes.get(exc.status_code, "http_error"),
+            "message": str(exc.detail),
+        }
 
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error": {
-                "code": error_codes.get(exc.status_code, "HTTP_ERROR"),
-                "message": str(exc.detail),
-            }
-        },
+        content={"error": error},
         headers=exc.headers,
     )
 
@@ -44,7 +50,7 @@ async def validation_exception_handler(
         status_code=422,
         content={
             "error": {
-                "code": "VALIDATION_ERROR",
+                "code": "invalid_request",
                 "message": "Request validation failed",
             }
         },
