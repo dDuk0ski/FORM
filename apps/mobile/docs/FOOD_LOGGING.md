@@ -1,16 +1,20 @@
 # Food search and logging (frontend)
 
-Owner: Jake. Status (Nov 13): works end to end on **sample data and on-device storage**, the
-default. With `EXPO_PUBLIC_USE_MOCKS=0` it uses Supabase with the schema on main, but saving is
-blocked until `food_logs.user_id` has a default and there is no sign-in yet; see
-`BACKEND_HANDOFF.md`. Built for Expo SDK 58 / React Native 0.88.1 / RNTL 14.
+Owner: Jake. Status (Nov 22): works end to end on **sample data and on-device storage**, the
+default. With `EXPO_PUBLIC_USE_MOCKS=0` it uses Supabase with the schema on main, where
+`food_logs.user_id` defaults to `auth.uid()` (`20261115200000_default_user_id_to_auth_uid.sql`).
+Saving still needs a signed-in Supabase session (sign-in is mock today) and the migrations
+applied to the hosted project (not verified); see `BACKEND_HANDOFF.md`. Built for Expo SDK 58 /
+React Native 0.88.1 / RNTL 14.
 
 ## What the user can do
 
 1. Open the **Log food** modal (`router.push('/log-food')`) and search. Results appear after 2+
    characters, with calories and macros for the default serving. The query matches the name or
    the brand, with the same order as `search_foods` on main: name-prefix matches, then other
-   name matches, then brand-only matches, then shorter names (at most 25).
+   name matches, then brand-only matches, then shorter names (at most 25). `%`, `_` and `\`
+   are plain characters in both modes (on main since
+   `20261115200100_escape_search_foods_wildcards.sql`).
 2. Tap a result to open **Add food** (`/food-detail`). Pick a meal, choose the food's serving or
    **Custom grams**, enter or step the amount, see the scaled nutrition, and tap **Add to log**.
 3. Back in Log food, **Nutrition** and **Logged today** update immediately. Entries can be removed.
@@ -28,7 +32,8 @@ Today. Covered by `src/__tests__/log-food-entry.test.tsx`.
 Damjan's daily brief (PR #5, `ui/nutrition-demo`, not merged) replaces Today. Its **Meal** quick
 action also routes to `/log-food`, so no food change is needed when it lands. The test for that
 quick action is deferred until PR #5 merges. Its Fuel tile reads `GET /today`, which is a fixture
-in mock mode, so it does not move when you log food; the modal's Nutrition card does. A patch
+in mock mode, so it does not move when you log food; the modal's Nutrition card does. On main,
+`GET /today` reads `daily_records`; PR #12 (open draft) switches it to `food_log_entries`. A patch
 that feeds the Fuel tile from the food totals is kept outside the repo until PR #5 lands.
 
 ## How it is built

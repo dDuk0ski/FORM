@@ -1,16 +1,18 @@
 # Backend handoff: food search and food logging
 
 **For:** Joey (backend/API), Austen (database), Damjan (Today) **From:** Jake (frontend, food)
-**Status:** updated Nov 13, 2026 against `origin/main` at `f3c4cd0`
+**Status:** updated Nov 22, 2026 against `origin/main` at `9f6c36d`
 
 The food screens run on sample data by default. With `EXPO_PUBLIC_USE_MOCKS=0` they use the
-Supabase service in `src/api/foods.supabase.ts`, which follows the schema on main. Reads work once
-there is a signed-in session. **Inserts stay blocked** until `food_logs.user_id` gets a default
-(see "Still open"). The frontend does not and will not change any schema, migration, grant or RLS
-policy.
+Supabase service in `src/api/foods.supabase.ts`, which follows the schema on main. On main,
+`food_logs.user_id` defaults to `auth.uid()`, so the app never sends a `user_id`. Reads and
+inserts need a signed-in Supabase session (the app's sign-in is still mock) and the migrations
+applied to the hosted project (not verified). The frontend does not change any schema, migration,
+grant or RLS policy.
 
-Sources: I read the SQL and Python on `origin/main` and the PR threads on GitHub. I have not run
-the migrations against the hosted Supabase project or called a deployed backend.
+Sources: I read the SQL and Python on `origin/main`, `origin/ui/onboarding` and
+`origin/backend/today-live-targets`, and the PR threads on GitHub. I have not run the migrations
+against the hosted Supabase project or called a deployed backend.
 
 ## What is merged
 
@@ -19,8 +21,21 @@ the migrations against the hosted Supabase project or called a deployed backend.
 | #1 `backend-initial-setup` | FastAPI backend: Supabase-token auth, `GET /today`                                | Nov 12 |
 | #4 `db/schema-gaps`        | Check constraints, food views and search, workout and model tables, food seed     | Nov 12 |
 | #6 `expo-upgrade`          | Expo SDK 58, React Native 0.88.1, RNTL 14.1.0, `@react-native/jest-preset` 0.88.1 | Nov 12 |
+| #10 `nutrition-model`      | Nutrition model package: adaptive TDEE and daily targets                          | Nov 19 |
+| #9 `db/user-id-defaults`   | `user_id DEFAULT auth.uid()` on app-written tables; `search_foods` escaping       | Nov 19 |
 
-PR #5 (`ui/nutrition-demo`, Damjan's Today brief) is still open and still on SDK 57.
+PR #5 (`ui/nutrition-demo`, Damjan's Today brief) is still open (draft) and still on SDK 57.
+
+## Fixed on main
+
+| Fix                                                                                                                                                         | Migration (under `supabase/migrations/`)           | Landed                                                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------- |
+| `food_logs.user_id` defaults to `auth.uid()` (also `body_metrics`, `readiness_checkins`, `pantry_items`, `workouts`, `training_preferences`). RLS unchanged | `20261115200000_default_user_id_to_auth_uid.sql`   | Written Nov 15, merged Nov 19 (PR #9)                 |
+| `search_foods` treats `%`, `_` and `\` as plain characters. Brand search, ranking and the 25-row cap are unchanged                                          | `20261115200100_escape_search_foods_wildcards.sql` | Written Nov 15, merged Nov 19 (PR #9)                 |
+| `nutrients.code` is `NOT NULL` (plus `nutrients_code_unique`)                                                                                               | `20261101180200_add_food_views_and_search.sql`     | Review commit `3ea76a9` Nov 11, merged Nov 12 (PR #4) |
+| `search_foods` matches the brand as well as the name                                                                                                        | `20261101180200_add_food_views_and_search.sql`     | Review commit `3ea76a9` Nov 11, merged Nov 12 (PR #4) |
+
+Whether these migrations are applied to the hosted Supabase project is not verified.
 
 ## The food schema on main
 
@@ -30,8 +45,9 @@ All under `supabase/migrations/`.
   `id`, `name`, `brand`, `source`, `source_id`, `barcode`, `serving_g`, `density`, `data_tier`,
   `serving_label`. `SELECT` for `authenticated`.
 - **`food_logs`** (same file, plus `20261029170735_add_food_log_serving_and_soft_delete.sql`):
-  `id`, `user_id` (NOT NULL, **no default**), `logged_at` (default `now()`), `meal` (nullable),
-  `food_id`, `grams`, `source`, `serving_label`, `serving_quantity`, `deleted_at`.
+  `id`, `user_id` (NOT NULL, default `auth.uid()` from
+  `20261115200000_default_user_id_to_auth_uid.sql`), `logged_at` (default `now()`), `meal`
+  (nullable), `food_id`, `grams`, `source`, `serving_label`, `serving_quantity`, `deleted_at`.
 - **`nutrients.code`** (`20261101180200_add_food_views_and_search.sql`): `NOT NULL` with the
   named constraint `nutrients_code_unique`. Existing rows get a code made from their name first.
 - **`food_macros`** view (same file, `security_invoker`): `food_id`, `kcal_per_100g`,
@@ -41,10 +57,11 @@ All under `supabase/migrations/`.
   `local_date`, `meal`, `source`, `food_id`, `food_name`, `brand`, `grams`, `serving_label`,
   `serving_quantity`, `kcal`, `protein_g`, `carb_g`, `fat_g`. Soft-deleted rows are excluded.
   `local_date` is `logged_at` in `profiles.timezone`, or UTC when that is null.
-- **`search_foods(query TEXT, max_results INTEGER DEFAULT 25)`** (same file): matches `name` **or**
-  `brand` (`ILIKE '%query%'`). Order: name-prefix matches, then other name matches, then brand-only
-  matches, then shorter names, then name. At most 25 rows. `EXECUTE` for `authenticated` and
-  `service_role` only.
+- **`search_foods(query TEXT, max_results INTEGER DEFAULT 25)`** (same file, replaced by
+  `20261115200100_escape_search_foods_wildcards.sql`): matches `name` **or** `brand`
+  (`ILIKE '%query%'`), with `\`, `%` and `_` in the query escaped so they match only themselves.
+  Order: name-prefix matches, then other name matches, then brand-only matches, then shorter
+  names, then name. At most 25 rows. `EXECUTE` for `authenticated` and `service_role` only.
 - **CHECK constraints** (`20261101180000_add_check_constraints.sql`): `meal IN ('breakfast',
 'lunch', 'dinner', 'snack')`, `source IN ('manual', 'barcode', 'recipe', 'predicted')`,
   `grams > 0`, `serving_quantity > 0`, `food_nutrients.is_known = (amount_per_100g IS NOT NULL)`,
@@ -76,27 +93,25 @@ All under `supabase/migrations/`.
 | Add         | `food_logs` insert of `id` (made on the device), `food_id`, `grams`, `meal`, `source`, `serving_label`, `serving_quantity`, `logged_at`; a retry with the same `id` is ignored |
 | Remove      | `food_logs` update `deleted_at = now` where `id = <id>` and `deleted_at is null`                                                                                               |
 
-The app never sends `user_id`. Unknown nutrients stay null and are shown as "—", never 0. Daily
-totals are summed on the device from the day's entries (known values only, with a partial flag).
+The app never sends `user_id`; the server fills it from the session. The app sends the search
+query unescaped; the server handles `%`, `_` and `\`. Unknown nutrients stay null and are shown
+as "—", never 0. Daily totals are summed on the device from the day's entries (known values only,
+with a partial flag).
 
 The mock search (`src/lib/foodSearch.ts`) follows the same rules as `search_foods`, so results
 look the same in both modes.
 
 ## Still open
 
-| #   | Item                                                                                                                                                                                                                                                                                                                                                                                                       | Owner         | Where                                                                                            |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------ |
-| 1   | **`food_logs.user_id` has no default.** Every insert from the app fails with a not-null error until it is `DEFAULT auth.uid()` (or equivalent). The app shows "Saving to your account is not available yet."                                                                                                                                                                                               | Austen        | `20261022210543_add_foods_and_food_logs.sql`                                                     |
-| 2   | **Hard delete is still allowed.** `authenticated` still has `DELETE` on `food_logs` and the "Users can delete their own food logs" policy is still there. The app only soft-deletes. Keep or drop?                                                                                                                                                                                                         | Austen        | `20261023220022_add_authenticated_food_grants.sql`, `20261022211716_add_foods_food_logs_rls.sql` |
-| 3   | **`meal` is nullable.** The CHECK passes on null. The app always sends a meal and refuses a null-meal row it reads. Make it `NOT NULL`?                                                                                                                                                                                                                                                                    | Austen        | `20261022210543_add_foods_and_food_logs.sql`                                                     |
-| 4   | **`search_foods` does not escape `%` and `_`.** A query containing them acts as a wildcard.                                                                                                                                                                                                                                                                                                                | Austen        | `20261101180200_add_food_views_and_search.sql`                                                   |
-| 5   | **Migrations applied to the hosted project: unverified.** PR #4 asked for them to be applied with `supabase db push` and the seed loaded. Nothing in the repo shows it was done.                                                                                                                                                                                                                           | Austen        | PR #4 thread                                                                                     |
-| 6   | **`GET /today` uses the server's date** (`date.today()`, UTC on a host), has no `date` parameter, and reads `consumed` from `daily_records`, not `food_log_entries`. It lacks `tdee_estimate`, `target_source`, `rationale`, `protein_split`, `micronutrient_flags`, `log_quality` and `stub`, and `readiness` is a number, not `{ score, advice }` (`src/types/api.ts`). Errors are FastAPI `{ detail }`. | Joey          | `backend/routers/today.py`                                                                       |
-| 7   | **Nothing writes `profiles.timezone`**, so `local_date` is the UTC day for everyone. Mock mode uses the device's day. Which day is "today", and who sets the timezone?                                                                                                                                                                                                                                     | Damjan / team | `20261029161904_add_profile_fields.sql`                                                          |
-| 8   | **No sign-in on any branch.** Only `TODO(auth)` comments in `src/app/_layout.tsx` and `src/api/supabase.ts`. Real calls need a session.                                                                                                                                                                                                                                                                    | Unassigned    |                                                                                                  |
-| 9   | **Today totals.** Today's numbers come from `GET /today`; the Nutrition card sums the log. They disagree until `/today` reads `food_log_entries`.                                                                                                                                                                                                                                                          | Joey, Damjan  |                                                                                                  |
-
-Damjan's review of PR #1 (Nov 11) asks Joey for the same `/today` changes as item 6.
+| #   | Item                                                                                                                                                                                                                                                      | Owner                                               | Where                                                                                            |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 1   | **Hard delete is still allowed.** `authenticated` still has `DELETE` on `food_logs` and the "Users can delete their own food logs" policy is still there. The app only soft-deletes. Keep or drop?                                                        | Austen                                              | `20261023220022_add_authenticated_food_grants.sql`, `20261022211716_add_foods_food_logs_rls.sql` |
+| 2   | **`meal` is nullable.** The CHECK passes on null. The app always sends a meal and refuses a null-meal row it reads. Make it `NOT NULL`?                                                                                                                   | Austen                                              | `20261022210543_add_foods_and_food_logs.sql`                                                     |
+| 3   | **Migrations applied to the hosted project: not verified.** PR #9 says to run `supabase db push` once merged. On Nov 19 the PR #12 description said #9 was not applied yet. Nothing in the repo shows it has been done since.                             | Austen                                              | PR #4, #9 threads                                                                                |
+| 4   | **Nothing writes `profiles.timezone`** on `main` or `ui/onboarding`, so `local_date` is the UTC day for everyone and the PR #12 backend falls back to UTC. Mock mode uses the device's day.                                                               | Mason (setup flow)                                  | `20261029161904_add_profile_fields.sql`                                                          |
+| 5   | **No real sign-in.** `ui/onboarding` has a mock `src/api/auth.ts` (`TODO(auth)`, in-memory session); main has only `TODO(auth)` comments in `src/app/_layout.tsx` and `src/api/supabase.ts`. Real Supabase calls need a session.                          | Mason                                               | `apps/mobile/src/api/auth.ts` on `ui/onboarding`                                                 |
+| 6   | **`GET /today` on main** uses the server's date (`date.today()`), has no `date` parameter and reads `consumed` from `daily_records`. PR #12 (open draft) reads `food_log_entries` for the user's local day from `profiles.timezone` and accepts `?date=`. | Damjan (PR #12, handed to Joey to review and merge) | `backend/routers/today.py` on `backend/today-live-targets`                                       |
+| 7   | **Today totals source.** Today's numbers come from `GET /today`; the Nutrition card sums the log. They disagree until `/today` reads `food_log_entries` (PR #12).                                                                                         | Damjan                                              |                                                                                                  |
 
 ## Frontend files that consume the contract
 
