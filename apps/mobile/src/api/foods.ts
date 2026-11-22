@@ -10,8 +10,9 @@ import { supabase } from './supabase';
 //
 // Screens and hooks call `foodService` and never touch AsyncStorage, fetch or supabase
 // directly. Mock mode is the default: sample data and on-device storage (foods.mock.ts).
-// With EXPO_PUBLIC_USE_MOCKS=0 it uses Supabase (foods.supabase.ts, names on main), which
-// needs a signed-in session and a default on food_logs.user_id before logging works.
+// With EXPO_PUBLIC_USE_MOCKS=0 it uses Supabase (foods.supabase.ts, names on main). Logging
+// needs a signed-in Supabase session and the food_logs.user_id default from main
+// (20261115200000_default_user_id_to_auth_uid.sql) applied to the live project (not verified).
 // Nothing in src/app, src/components or src/hooks should need to change.
 // Integration points are listed in docs/BACKEND_HANDOFF.md.
 

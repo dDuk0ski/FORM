@@ -22,16 +22,19 @@ import { FoodServiceError, type FoodService } from './foods.types';
 // supabase/migrations/20261101180200_add_food_views_and_search.sql):
 //   search    rpc search_foods(query, max_results): matches name OR brand, name-prefix first,
 //             then other name matches, then brand-only, then shorter names; server caps at 25.
-//             The server's order is kept as-is.
+//             The server's order is kept as-is. The server treats %, _ and \ in the query
+//             as plain characters (20261115200100_escape_search_foods_wildcards.sql on
+//             main), so the app sends the query unescaped.
 //   detail    foods + food_macros view
 //   read log  food_log_entries view, by local_date, ordered by logged_at (soft-deleted excluded)
 //   write     food_logs: insert with an app-generated id; soft delete sets deleted_at
 // RLS scopes every row to the signed-in user. The app never sends user_id.
 //
-// KNOWN BLOCKER: inserts fail until food_logs.user_id gets a default (e.g. DEFAULT auth.uid()).
-// It is NOT NULL with no default (20261022210543_add_foods_and_food_logs.sql) and nothing on
-// main changes it. This file does not work around that. Reads and inserts also need a
-// signed-in session, which the app does not have yet (no sign-in screen on any branch).
+// user_id: food_logs.user_id defaults to auth.uid() on main
+// (20261115200000_default_user_id_to_auth_uid.sql), so the server fills it from the session.
+// Inserts still need a signed-in Supabase session (without one they fail) and that migration
+// applied to the live project (not verified). The app's sign-in is still mock, so it has no
+// Supabase session yet.
 //
 // Unknown nutrients are null (is_known = false) and stay null here, never 0.
 // Not used unless EXPO_PUBLIC_USE_MOCKS=0 (see foods.ts).
@@ -154,7 +157,11 @@ function toEntry(row: EntryRow): FoodLogEntry {
   };
 }
 
-/** Map a PostgREST / Postgres error to a message that is safe to show. */
+/**
+ * Map a PostgREST / Postgres error to a message that is safe to show. 23502 (NOT NULL) or
+ * 42501 (permission / RLS) on a write means no signed-in session or the user_id default not
+ * applied on the server.
+ */
 function fail(error: DbError, fallback: string): never {
   if (error.code === '23503') {
     throw new FoodServiceError('unknown_food', 'That food could not be found.');
@@ -214,7 +221,7 @@ export function createSupabaseFoodService(client: FoodsClient): FoodService {
     },
 
     async addLogEntry(log: NewFoodLog): Promise<FoodLogEntry> {
-      // No user_id: the server must fill it from the session (see KNOWN BLOCKER above).
+      // No user_id: the server fills it from the session (DEFAULT auth.uid(), see above).
       // ON CONFLICT (id) DO NOTHING keeps a retried save with the same id to one row.
       const { error } = await client.from('food_logs').upsert(
         {
