@@ -219,7 +219,7 @@ describe('Supabase FoodService', () => {
     expect(entry.nutrients.carb_g).toBeNull();
   });
 
-  it('reports the missing user_id default as not ready, without retrying', async () => {
+  it('reports a NOT NULL user_id error as not ready, without retrying', async () => {
     const fake = fakeClient(() => ({
       data: null,
       error: { code: '23502', message: 'null value in column "user_id"' },
