@@ -7,7 +7,7 @@ import math
 
 import numpy as np
 
-from fast_global_progression_model import (
+from FORM.python_services.global_progression_model import (
     TARGET_RIR,
     BayesianLinearRegression,
     ExerciseObservation,

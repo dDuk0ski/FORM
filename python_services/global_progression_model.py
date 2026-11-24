@@ -17,56 +17,57 @@ GLOBAL_STATE_VERSION = 6
 class ProgressionConfig:
     local_weight: float = 0.75
 
-    global_prior_intercept: float = 0.65
-    global_prior_intercept_variance: float = 0.50
-    global_prior_feature_variance: float = 0.25
-    global_noise_variance: float = 0.04
+    global_prior_intercept: float = 0.55
+    global_prior_intercept_variance: float = 0.75
+    global_prior_feature_variance: float = 0.05
+    global_noise_variance: float = 0.02
 
-    local_prior_intercept: float = 0.65
+    local_prior_intercept: float = 0.75
     local_prior_intercept_variance: float = 0.35
-    local_prior_feature_variance: float = 0.20
-    local_prior_interaction_variance: float = 0.10
-    local_noise_variance: float = 0.04
+    local_prior_feature_variance: float = 0.35
+    local_prior_interaction_variance: float = 0.20
+    local_noise_variance: float = 0.02
 
-    rir_prior_intercept: float = 0.75
+    rir_prior_intercept: float = 0.5
     rir_noise_variance: float = 0.08
 
-    rep_score_weight: float = 0.62
-    rir_score_weight: float = 0.28
+    rep_score_weight: float = 0.70
+    rir_score_weight: float = 0.20
     completion_score_weight: float = 0.10
 
-    rir_above_target_decay: float = 4.0
+    rir_above_target_decay: float = 6.0
     rir_below_target_decay: float = 0.75
 
-    rep_miss_1_score: float = 0.90
-    rep_miss_2_score: float = 0.72
-    rep_miss_3_score: float = 0.48
-    rep_miss_4_score: float = 0.25
+    rep_miss_1_score: float = 0.80
+    rep_miss_2_score: float = 0.55
+    rep_miss_3_score: float = 0.25
+    rep_miss_4_score: float = 0.15
     rep_miss_tail_decay: float = 2.0
 
     incomplete_set_penalty: float = 0.45
-    challenge_bonus: float = 0.12
-    challenge_difficulty_cap: float = 3.0
-    near_target_reps: int = 1
+    challenge_bonus: float = 0.05
+    challenge_difficulty_cap: float = 4.0
+    near_target_reps: int = 0
 
-    progression_bonus: float = 0.045
+    progression_bonus: float = 0.01
     progression_bonus_cap: float = 3.0
-    uncertainty_penalty: float = 0.08
+    uncertainty_penalty: float = 0.16
 
-    rir_penalty_high: float = 0.0
-    rir_penalty_moderate: float = 0.08
+    rir_penalty_high: float = 0.01
+    rir_penalty_moderate: float = 0.16
     rir_penalty_low: float = 0.20
-    rir_penalty_unsafe: float = 0.45
+    rir_penalty_unsafe: float = 0.60
 
-    rir_threshold_high: float = 0.80
-    rir_threshold_moderate: float = 0.65
-    rir_threshold_low: float = 0.50
-    rir_safety_fallback_threshold: float = 0.50
+    rir_threshold_high: float = 0.90
+    rir_threshold_moderate: float = 0.60
+    rir_threshold_low: float = 0.40
+    rir_safety_fallback_threshold: float = 0.60
 
     candidate_rep_steps: tuple[int, ...] = (-1, 0, 1, 2)
     candidate_weight_steps: tuple[int, ...] = (-1, 0, 1, 2)
 
-    softmax_temperature: float = 0.15
+    softmax_temperature: float = 0.20
+
 
     def validate(self) -> None:
         if not 0.0 <= self.local_weight <= 1.0:

@@ -1,18 +1,11 @@
 from __future__ import annotations
 
-import argparse
-import json
 import math
 import random
 import uuid
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
 from typing import Any
 
-BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_EXERCISE_FILE = BASE_DIR / "normalized_exercises.json"
-DEFAULT_OUTPUT_FILE = BASE_DIR / "example_workouts.json"
-DEFAULT_RESULT_FILE = BASE_DIR / "example_workout_results.json"
 
 @dataclass
 class WorkoutRequest:
@@ -28,6 +21,7 @@ class WorkoutRequest:
     seed: int | None = 42
     split_rotation_index: int = 0
 
+
 @dataclass
 class ExerciseSlot:
     target_muscle: str
@@ -36,6 +30,7 @@ class ExerciseSlot:
     priority: int
     sets: int
     role: str
+
 
 @dataclass
 class WorkoutExercise:
@@ -52,8 +47,9 @@ class WorkoutExercise:
     rest_seconds: int
     role: str
     selection_score: float
-    weight: float | None = None
     secondary_muscles: list[str] = field(default_factory=list)
+    weight: float | None = None
+
 
 @dataclass
 class TrainingDay:
@@ -64,6 +60,7 @@ class TrainingDay:
     split_day_index: int = 0
     split_cycle_length: int = 1
     exercises: list[WorkoutExercise] = field(default_factory=list)
+
 
 @dataclass
 class Workout:
@@ -91,6 +88,7 @@ class WorkoutResult:
     adherence_score: float | None = None
     notes: str = ""
 
+
 @dataclass
 class BayesianPosterior:
     alpha: float = 1.0
@@ -106,24 +104,21 @@ class BayesianPosterior:
         else:
             self.beta += weight
 
+
 class ExerciseDatabase:
     REQUIRED_FIELDS = ("id", "name", "classification", "equipment", "muscles", "movement")
 
-    def __init__(self, exercise_records: list[dict[str, Any]] | str | Path):
+    def __init__(self, exercise_records: list[dict[str, Any]]):
+        """
+        Initialize from records supplied by the application's database layer.
+
+        TODO(DATABASE): Replace caller-supplied records with a repository query.
+        Map database rows to the normalized exercise dictionary shape expected
+        by this generator.
+        """
         self.path = None
-        if isinstance(exercise_records, (str, Path)):
-            self.path = Path(exercise_records).expanduser().resolve()
-            if not self.path.exists():
-                raise FileNotFoundError(f"Exercise database not found: {self.path}")
-            try:
-                with self.path.open("r", encoding="utf-8-sig") as file:
-                    exercise_records = json.load(file)
-            except json.JSONDecodeError as error:
-                raise ValueError(f"Invalid JSON in {self.path}: {error}") from error
-            if isinstance(exercise_records, dict):
-                exercise_records = exercise_records.get("exercises")
         if not isinstance(exercise_records, list):
-            raise TypeError("Exercise data must be a JSON list or an object containing an 'exercises' list.")
+            raise TypeError("exercise_records must be a list of exercise dictionaries.")
 
         self.exercises = []
         self.rejected_records = []
@@ -165,8 +160,10 @@ class ExerciseDatabase:
 
         if not self.exercises:
             examples = self.rejected_records[:5]
-            source = f" from {self.path}" if self.path else " from the supplied records"
-            raise ValueError(f"No valid exercises were loaded{source}. First rejected records: {examples}")
+            raise ValueError(
+                "No valid exercises were supplied by the database adapter. "
+                f"First rejected records: {examples}"
+            )
 
         self.by_id = {item["id"]: item for item in self.exercises}
         self.category_counts = {}
@@ -263,6 +260,7 @@ class ExerciseDatabase:
         query = text.lower()
         return [item for item in self.exercises if query in str(item.get("name", "")).lower()]
 
+
 class SplitGenerator:
     SPLITS = {
         "full_body": [
@@ -311,6 +309,7 @@ class SplitGenerator:
             name, focus, muscles = templates[split_day_index]
             days.append(TrainingDay(index + 1, name, focus, list(muscles), split_day_index, len(templates)))
         return days
+
 
 class VolumeAllocator:
     BASE = {
@@ -379,6 +378,7 @@ class VolumeAllocator:
     def day_volume(self, muscle: str, day_number: int, number_of_days: int | None = None, focus: str | None = None) -> int:
         return self.day_allocations.get((day_number, muscle), 0)
 
+
 class MovementAllocator:
     PATTERNS = {
         "chest": [("horizontal_push", True, "primary_compound"), ("chest_isolation", False, "isolation")],
@@ -412,6 +412,7 @@ class MovementAllocator:
             pattern, compound, role = patterns[index % len(patterns)]
             slots.append(ExerciseSlot(muscle, pattern, compound, index + 1, chunk, role))
         return slots
+
 
 class ExerciseSelector:
     PARENT_TO_CHILDREN = {
@@ -489,6 +490,7 @@ class ExerciseSelector:
         self.recent_ids.add(str(exercise.get("id")))
         return exercise, score
 
+
 class PrescriptionGenerator:
     RULES = {
         "strength": {"compound": ([3, 5], [3, 6], 3, 240), "isolation": ([2, 4], [6, 12], 2, 150)},
@@ -513,6 +515,7 @@ class PrescriptionGenerator:
         if goal == "strength" and not slot.compound:
             rep_range = [8, 15]
         return rep_range, rir, rest
+
 
 class WorkoutValidator:
     EXPERIENCE_EXERCISE_CAPS = {
@@ -606,6 +609,7 @@ class WorkoutValidator:
             "duration_overage_minutes": max(0, overage),
             "duration_tolerance_minutes": tolerance_minutes,
         }
+
 
 class WeeklyVolumeValidator:
     def build_report(
@@ -758,6 +762,7 @@ class WeeklyVolumeValidator:
                 "The original weekly targets are retained in this report, including muscles that the selected split cannot schedule.",
             ],
         }
+
 
 class WorkoutGenerator:
     def __init__(self, database: ExerciseDatabase, seed: int | None = 42):
@@ -944,10 +949,12 @@ class WorkoutGenerator:
                 volume[muscle] = volume.get(muscle, 0) + exercise.sets
         return dict(sorted(volume.items()))
 
+
 def next_split_rotation_index(completed_split_day_index: int, split_cycle_length: int) -> int:
     if split_cycle_length < 1:
         raise ValueError("split_cycle_length must be at least 1.")
     return (int(completed_split_day_index) + 1) % int(split_cycle_length)
+
 
 def advance_profile_split_rotation(
     profile_rotation_indices: dict[str, int],
@@ -961,82 +968,15 @@ def advance_profile_split_rotation(
     updated[split] = next_split_rotation_index(completed_index, cycle_length)
     return updated
 
-def create_example_requests() -> list[WorkoutRequest]:
-    equipment = ["barbell", "dumbbell", "cable", "body_weight", "leverage_machine", "smith_machine", "resistance_band"]
-    return [
-        WorkoutRequest(goal="hypertrophy", experience="intermediate", days_per_week=4, split="upper_lower", duration_minutes=75, equipment=equipment, seed=42),
-        WorkoutRequest(goal="strength", experience="intermediate", days_per_week=4, split="upper_lower", duration_minutes=75, equipment=equipment, seed=43, preferences={"compound_priority": 0.9, "isolation_priority": 0.1}),
-        WorkoutRequest(goal="general_fitness", experience="beginner", days_per_week=3, split="full_body", duration_minutes=60, equipment=equipment, seed=44, preferences={"compound_priority": 0.6, "isolation_priority": 0.4}),
-        WorkoutRequest(goal="hypertrophy", experience="advanced", days_per_week=5, split="ppl_upper_lower", duration_minutes=90, equipment=equipment, seed=45),
-    ]
 
 def serialize_workouts(workouts: list[Workout]) -> list[dict[str, Any]]:
     return [asdict(workout) for workout in workouts]
+
 
 def build_workout_generator(
     exercise_records: list[dict[str, Any]],
     seed: int | None = 42,
 ) -> WorkoutGenerator:
-    """
-    Create the generator from exercise records retrieved by the application.
-
-    TODO(DATABASE): Replace exercise_records with a call to the exercise
-    repository once the database connection/service is implemented.
-    """
     catalog = ExerciseDatabase(exercise_records)
     return WorkoutGenerator(catalog, seed=seed)
 
-def write_json(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as file:
-        json.dump(data, file, indent=2, ensure_ascii=False)
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate FORM workouts from normalized_exercises.json.")
-    parser.add_argument("--exercises", type=Path, default=DEFAULT_EXERCISE_FILE)
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_FILE)
-    parser.add_argument("--results", type=Path, default=DEFAULT_RESULT_FILE)
-    return parser.parse_args()
-
-def main() -> None:
-    args = parse_args()
-    database = ExerciseDatabase(args.exercises)
-    generated = []
-    for request in create_example_requests():
-        generator = WorkoutGenerator(database, seed=request.seed)
-        workouts = generator.generate_program(request)
-        generated.append({
-            "request": asdict(request),
-            "workouts": serialize_workouts(workouts),
-            "weekly_volume": generator.last_weekly_volume_report,
-        })
-    write_json(args.output, generated)
-    result = WorkoutResult(
-        workout_id="example_workout",
-        completed=True,
-        notes="Example result schema. Populate this with real workout results after a user completes a workout.",
-    )
-    write_json(args.results, asdict(result))
-    print(f"Exercise database: {database.path}")
-    print(f"Loaded exercises: {len(database.exercises)}")
-    print(f"Category counts: {json.dumps(database.category_counts, sort_keys=True)}")
-    print(f"Rejected records: {len(database.rejected_records)}")
-    if database.rejected_records:
-        for record in database.rejected_records[:10]:
-            print(f"  Rejected record {record['index']}: {'; '.join(record['problems'])}")
-    print(f"Generated {sum(len(item['workouts']) for item in generated)} workouts across {len(generated)} programs.")
-    print(f"Workout file: {args.output.resolve()}")
-    print(f"Result schema: {args.results.resolve()}")
-    for program in generated:
-        request = program["request"]
-        report = program["weekly_volume"]
-        print(f"\n{request['goal']} | {request['experience']} | {request['split']} | {len(program['workouts'])} days")
-        for workout in program["workouts"]:
-            status = "PASS" if workout["validation"]["valid"] else "FAIL"
-            print(f"  Day {workout['training_day']} {workout['name']}: {len(workout['exercises'])} exercises, {workout['estimated_minutes']} min, {status}")
-        print(f"  Weekly volume targets met: {report['all_targets_met']}")
-        for muscle, values in report["muscles"].items():
-            print(f"    {muscle}: {values['allocated_sets']}/{values['target_sets']} ({values['status']})")
-
-if __name__ == "__main__":
-    main()

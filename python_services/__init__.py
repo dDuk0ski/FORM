@@ -1,8 +1,9 @@
-from .fast_global_progression_model import (
+from .global_progression_model import (
     ExerciseObservation,
     ExercisePrescription,
     GlobalProgressionModel,
     SetResult,
+    ProgressionConfig
 )
 from .progression_adapter import (
     apply_recommendation_to_exercise,
@@ -22,6 +23,7 @@ __all__ = [
     "ExerciseRecommendation",
     "LocalProgressionModel",
     "ProgressionSystem",
+    "ProgressionConfig",
     "apply_recommendation_to_exercise",
     "apply_recommendations_to_program",
 ]
