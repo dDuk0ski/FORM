@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { ActivityIndicator, Text, View } from 'react-native';
 
-import { Button, Card, Row, Screen, StatTile } from '@/components';
+import { Button, Card, DaySummaryCard, Row, Screen, StatTile } from '@/components';
+import { useDaySummary } from '@/hooks/useDaySummary';
 import { useToday } from '@/hooks/useToday';
 import { useTheme } from '@/theme';
 
@@ -12,6 +13,8 @@ import { useTheme } from '@/theme';
 export default function TodayScreen() {
   const { colors, spacing, typography } = useTheme();
   const { data, isPending, error, refetch } = useToday();
+  // On-device assistant (Apple Intelligence). Hidden on phones that don't have it.
+  const { data: summary } = useDaySummary(data);
   return (
     <Screen title="Today">
       {isPending ? (
@@ -22,16 +25,19 @@ export default function TodayScreen() {
           <Button title="Retry" variant="secondary" onPress={() => refetch()} />
         </Card>
       ) : (
-        <Card>
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <StatTile label="Calories left" value={data.remaining.kcal} unit="kcal" />
-            <StatTile label="Readiness" value={data.readiness.score} />
-          </View>
-          <Row label="Target" value={`${data.targets.kcal} kcal`} />
-          <Row label="Eaten" value={`${data.consumed.kcal} kcal`} />
-          <Row label="Protein left" value={`${data.remaining.protein_g} g`} />
-          <Text style={[typography.caption, { color: colors.textMuted }]}>{data.rationale}</Text>
-        </Card>
+        <>
+          <Card>
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <StatTile label="Calories left" value={data.remaining.kcal} unit="kcal" />
+              <StatTile label="Readiness" value={data.readiness.score} />
+            </View>
+            <Row label="Target" value={`${data.targets.kcal} kcal`} />
+            <Row label="Eaten" value={`${data.consumed.kcal} kcal`} />
+            <Row label="Protein left" value={`${data.remaining.protein_g} g`} />
+            <Text style={[typography.caption, { color: colors.textMuted }]}>{data.rationale}</Text>
+          </Card>
+          <DaySummaryCard summary={summary} />
+        </>
       )}
       <Button title="Log food" onPress={() => router.push('/log-food')} />
     </Screen>
