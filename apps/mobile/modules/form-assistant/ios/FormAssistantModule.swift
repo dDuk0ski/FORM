@@ -42,7 +42,7 @@ private func bridged<T>(_ body: () async throws -> T) async throws -> T {
   }
 }
 
-final class AssistantException: GenericException<(code: String, message: String)> {
+final class AssistantException: GenericException<(code: String, message: String)>, @unchecked Sendable {
   override var code: String { param.code }
   override var reason: String { param.message }
 }
