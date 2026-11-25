@@ -1,5 +1,6 @@
 export { Button } from './Button';
 export { Card } from './Card';
+export { DaySummaryCard } from './DaySummaryCard';
 export { NumberStepper } from './NumberStepper';
 export { Pill } from './Pill';
 export { ProgressBar } from './ProgressBar';
