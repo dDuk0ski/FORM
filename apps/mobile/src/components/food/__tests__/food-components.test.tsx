@@ -1,0 +1,323 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import type { ReactElement } from 'react';
+import { View } from 'react-native';
+
+import { foodService } from '@/api/foods';
+import { DailyNutritionCard } from '@/components/food/DailyNutritionCard';
+import { FoodLogForm } from '@/components/food/FoodLogForm';
+import { FoodLogList } from '@/components/food/FoodLogList';
+import { SearchResults } from '@/components/food/SearchResults';
+import { TodayNutrition } from '@/components/food/TodayNutrition';
+import { todayLocal } from '@/lib/dates';
+import { buildCustomGramsLog, buildServingLog, hydrateLogEntry, sumMacros } from '@/lib/nutrition';
+import { foodsFixture } from '@/mocks/foods';
+import { createWrapper } from '@/test-utils/providers';
+import type { Food } from '@/types/food';
+
+const banana = foodsFixture.find((food) => food.id === 'f_0455')!;
+
+async function renderWithProviders(ui: ReactElement) {
+  const { wrapper, queryClient } = createWrapper();
+  return { queryClient, ...(await render(ui, { wrapper })) };
+}
+
+beforeEach(async () => {
+  await AsyncStorage.clear();
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
+describe('SearchResults', () => {
+  it('shows a hint until the query is long enough', async () => {
+    await renderWithProviders(<SearchResults query="b" onSelect={jest.fn()} />);
+    expect(screen.getByText('Search for a food')).toBeOnTheScreen();
+  });
+
+  it('lists matches with calories for the default serving, and opens one on press', async () => {
+    const onSelect = jest.fn();
+    await renderWithProviders(<SearchResults query="banana" onSelect={onSelect} />);
+    expect(await screen.findByText('Banana, raw')).toBeOnTheScreen();
+    expect(screen.getByText('105 kcal')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: /Banana, raw/ }));
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'f_0455' }));
+  });
+
+  it('says so when nothing matches', async () => {
+    await renderWithProviders(<SearchResults query="zzzz" onSelect={jest.fn()} />);
+    expect(await screen.findByText('No foods found')).toBeOnTheScreen();
+  });
+
+  it('shows the error and recovers on retry', async () => {
+    jest.spyOn(foodService, 'searchFoods').mockRejectedValueOnce(new Error('Network down'));
+    await renderWithProviders(<SearchResults query="banana" onSelect={jest.fn()} />);
+    expect(await screen.findByText('Search failed')).toBeOnTheScreen();
+    expect(screen.getByText('Network down')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Banana, raw')).toBeOnTheScreen();
+  });
+});
+
+describe('FoodLogForm', () => {
+  it('previews nutrition for the default serving', async () => {
+    await renderWithProviders(<FoodLogForm food={banana} />);
+    expect(screen.getByText('105 kcal')).toBeOnTheScreen();
+    expect(screen.getByText('118 g in total')).toBeOnTheScreen();
+  });
+
+  it('rescales the preview when the amount or serving changes', async () => {
+    await renderWithProviders(<FoodLogForm food={banana} />);
+    await fireEvent.changeText(screen.getByLabelText('Servings'), '1.5');
+    expect(screen.getByText('158 kcal')).toBeOnTheScreen(); // 177 g x 0.89
+    expect(screen.getByText('177 g in total')).toBeOnTheScreen();
+  });
+
+  it('offers custom grams, starting at 100 g, and scales from the grams typed', async () => {
+    await renderWithProviders(<FoodLogForm food={banana} />);
+    await fireEvent.press(screen.getByRole('radio', { name: 'Custom grams' }));
+    expect(screen.getByLabelText('Grams').props.value).toBe('100');
+    expect(screen.getByText('89 kcal')).toBeOnTheScreen();
+    expect(screen.getByText('100 g in total')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByLabelText('Grams'), '150');
+    expect(screen.getByText('134 kcal')).toBeOnTheScreen(); // 150 g x 0.89 = 133.5
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Increase Grams' }));
+    expect(screen.getByLabelText('Grams').props.value).toBe('160');
+
+    await fireEvent.changeText(screen.getByLabelText('Grams'), '0');
+    expect(screen.getByRole('button', { name: 'Add to log' })).toBeDisabled();
+  });
+
+  it('goes back to servings, starting at 1 serving', async () => {
+    await renderWithProviders(<FoodLogForm food={banana} />);
+    await fireEvent.press(screen.getByRole('radio', { name: 'Custom grams' }));
+    await fireEvent.press(screen.getByRole('radio', { name: '1 medium (118 g)' }));
+    expect(screen.getByLabelText('Servings').props.value).toBe('1');
+    expect(screen.getByText('105 kcal')).toBeOnTheScreen();
+  });
+
+  it('suggests a meal and lets the person change it', async () => {
+    await renderWithProviders(<FoodLogForm food={banana} />);
+    await fireEvent.press(screen.getByRole('radio', { name: 'Dinner' }));
+    expect(screen.getByRole('radio', { name: 'Dinner', checked: true })).toBeOnTheScreen();
+  });
+
+  it('saves the chosen meal and custom grams, with no serving', async () => {
+    await renderWithProviders(<FoodLogForm food={banana} />);
+    await fireEvent.press(screen.getByRole('radio', { name: 'Dinner' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Custom grams' }));
+    await fireEvent.changeText(screen.getByLabelText('Grams'), '150');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add to log' }));
+    expect(await screen.findByText('Added to your log')).toBeOnTheScreen();
+    const [saved] = await foodService.listLogEntries(todayLocal());
+    expect(saved).toMatchObject({
+      meal: 'dinner',
+      source: 'manual',
+      grams: 150,
+      serving_label: null,
+      serving_quantity: null,
+    });
+  });
+
+  it('steps the amount with the plus and minus buttons', async () => {
+    await renderWithProviders(<FoodLogForm food={banana} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Increase Servings' }));
+    expect(screen.getByLabelText('Servings').props.value).toBe('1.5');
+    await fireEvent.press(screen.getByRole('button', { name: 'Decrease Servings' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Decrease Servings' }));
+    expect(screen.getByLabelText('Servings').props.value).toBe('0.5');
+  });
+
+  it('blocks adding when the amount is invalid, with a message', async () => {
+    await renderWithProviders(<FoodLogForm food={banana} />);
+    await fireEvent.changeText(screen.getByLabelText('Servings'), 'abc');
+    expect(screen.getByText('Use numbers only, like 1 or 1.5.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Add to log' })).toBeDisabled();
+
+    await fireEvent.changeText(screen.getByLabelText('Servings'), '');
+    expect(screen.getByText('Enter an amount.')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByLabelText('Servings'), '0');
+    expect(screen.getByRole('button', { name: 'Add to log' })).toBeDisabled();
+  });
+
+  it('adds the food to the log and confirms', async () => {
+    await renderWithProviders(
+      <View>
+        <FoodLogForm food={banana} />
+        <TodayNutrition />
+      </View>,
+    );
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add to log' }));
+    expect(await screen.findByText('Added to your log')).toBeOnTheScreen();
+    // The entry now shows in today's log...
+    expect(await screen.findByLabelText('Remove Banana, raw')).toBeOnTheScreen();
+    // ...and in storage.
+    await expect(foodService.listLogEntries(todayLocal())).resolves.toHaveLength(1);
+  });
+
+  it('keeps the form and offers a retry when saving fails', async () => {
+    jest.spyOn(foodService, 'addLogEntry').mockRejectedValueOnce(new Error('Storage is full'));
+    await renderWithProviders(<FoodLogForm food={banana} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Add to log' }));
+    expect(await screen.findByText(/Storage is full/)).toBeOnTheScreen();
+    expect(screen.queryByText('Added to your log')).toBeNull();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Added to your log')).toBeOnTheScreen();
+  });
+
+  it('saves one entry even if the button is pressed repeatedly', async () => {
+    await renderWithProviders(<FoodLogForm food={banana} />);
+    const button = screen.getByRole('button', { name: 'Add to log' });
+    await fireEvent.press(button);
+    await fireEvent.press(button);
+    await fireEvent.press(button);
+    await screen.findByText('Added to your log');
+    await waitFor(async () =>
+      expect(await foodService.listLogEntries(todayLocal())).toHaveLength(1),
+    );
+  });
+});
+
+describe('DailyNutritionCard', () => {
+  const totals = sumMacros([{ kcal: 105, protein_g: 1.3, carb_g: 26.9, fat_g: 0.4 }]);
+  const targets = { kcal: 2680, protein_g: 175, carb_g: 300, fat_g: 85 };
+
+  it('shows progress toward targets when they are known', async () => {
+    await renderWithProviders(<DailyNutritionCard totals={totals} targets={targets} />);
+    expect(screen.getByText('105 / 2680 kcal')).toBeOnTheScreen();
+    expect(screen.getByText('1.3 / 175 g')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Calories progress').props.accessibilityValue).toEqual({
+      min: 0,
+      max: 100,
+      now: 4,
+    });
+  });
+
+  it('shows totals only, with no progress bars, when there are no targets', async () => {
+    await renderWithProviders(<DailyNutritionCard totals={totals} />);
+    expect(screen.getByText('105 kcal')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Calories progress')).toBeNull();
+  });
+
+  it('caps the bar at 100% when a target is exceeded', async () => {
+    await renderWithProviders(
+      <DailyNutritionCard
+        totals={{ ...totals, kcal: { value: 3000, hasUnknown: false } }}
+        targets={targets}
+      />,
+    );
+    expect(screen.getByLabelText('Calories progress').props.accessibilityValue.now).toBe(100);
+  });
+
+  it('marks a partial total and counts only known values toward progress', async () => {
+    const partial = sumMacros([
+      { kcal: 105, protein_g: 120, carb_g: 26.9, fat_g: 0.4 },
+      { kcal: 50, protein_g: null, carb_g: 5, fat_g: 1 },
+    ]);
+    await renderWithProviders(<DailyNutritionCard totals={partial} targets={targets} />);
+    expect(screen.getByText('120+ / 175 g')).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Protein at least 120 grams, some entries unknown, target 175 grams'),
+    ).toBeOnTheScreen();
+    // 120 of 175 g known: 69%. The unknown entry adds nothing, not even 0 noise.
+    expect(screen.getByLabelText('Protein progress').props.accessibilityValue.now).toBe(69);
+  });
+
+  it('shows a dash and an empty bar when nothing is known for a macro', async () => {
+    const unknown = sumMacros([{ kcal: 105, protein_g: null, carb_g: 26.9, fat_g: 0.4 }]);
+    await renderWithProviders(<DailyNutritionCard totals={unknown} targets={targets} />);
+    expect(screen.getByText('— / 175 g')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Protein unknown, target 175 grams')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Protein progress').props.accessibilityValue.now).toBe(0);
+    expect(screen.queryByText('0 / 175 g')).toBeNull();
+  });
+
+  it('shows partial and unknown totals without targets too', async () => {
+    const mixed = sumMacros([
+      { kcal: null, protein_g: 120, carb_g: 26.9, fat_g: 0.4 },
+      { kcal: null, protein_g: null, carb_g: 5, fat_g: 1 },
+    ]);
+    await renderWithProviders(<DailyNutritionCard totals={mixed} />);
+    expect(screen.getByText('120 g+')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Calories unknown')).toBeOnTheScreen();
+    expect(screen.queryByText('0 kcal')).toBeNull();
+  });
+});
+
+describe('FoodLogList', () => {
+  const entry = hydrateLogEntry(
+    buildServingLog({
+      id: 'le_1',
+      food: banana,
+      serving: banana.servings[0]!,
+      quantity: 1.5,
+      loggedAt: '2026-10-16T12:00:00.000Z',
+      meal: 'breakfast',
+    }),
+    banana,
+  );
+
+  it('invites the first entry when empty', async () => {
+    await renderWithProviders(<FoodLogList entries={[]} />);
+    expect(screen.getByText(/Nothing logged yet/)).toBeOnTheScreen();
+  });
+
+  it('shows each entry with its serving and quantity, and removes on press', async () => {
+    const onRemove = jest.fn();
+    await renderWithProviders(<FoodLogList entries={[entry]} onRemove={onRemove} />);
+    expect(screen.getByText('Banana, raw')).toBeOnTheScreen();
+    expect(screen.getByText('1.5 × 1 medium (118 g)')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove Banana, raw' }));
+    expect(onRemove).toHaveBeenCalledWith('le_1');
+  });
+
+  it('shows grams for an entry logged as custom grams', async () => {
+    const custom = hydrateLogEntry(
+      buildCustomGramsLog({
+        id: 'le_2',
+        food: banana,
+        grams: 150,
+        loggedAt: '2026-10-16T12:00:00.000Z',
+        meal: 'snack',
+      }),
+      banana,
+    );
+    await renderWithProviders(<FoodLogList entries={[custom]} />);
+    expect(screen.getByText('150 g')).toBeOnTheScreen();
+  });
+
+  it('shows a dash, never 0, for a logged food with an unknown nutrient', async () => {
+    // Test-only food (not sample data): calories and protein unknown.
+    const mystery: Food = {
+      id: 'f_test_unknown',
+      name: 'Food with unknown values',
+      brand: null,
+      macros_per_100g: { kcal: null, protein_g: null, carb_g: 20, fat_g: 1 },
+      servings: [{ id: '100g', label: '100 g', grams: 100 }],
+    };
+    const unknownEntry = hydrateLogEntry(
+      buildCustomGramsLog({
+        id: 'le_3',
+        food: mystery,
+        grams: 200,
+        loggedAt: '2026-10-16T12:00:00.000Z',
+        meal: 'lunch',
+      }),
+      mystery,
+    );
+    await renderWithProviders(<FoodLogList entries={[unknownEntry]} />);
+    expect(screen.getByText('Protein —')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Protein unknown')).toBeOnTheScreen();
+    expect(screen.getByText('—')).toBeOnTheScreen();
+    expect(screen.getByLabelText('unknown')).toBeOnTheScreen();
+    expect(screen.getByText('Carbs 40 g')).toBeOnTheScreen();
+    expect(screen.queryByText('Protein 0 g')).toBeNull();
+    expect(screen.queryByText('0 kcal')).toBeNull();
+  });
+});
