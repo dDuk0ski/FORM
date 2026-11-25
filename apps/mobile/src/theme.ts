@@ -14,6 +14,30 @@ const light = {
   success: '#1A7F37',
   warning: '#9A6700',
   danger: '#CF222E',
+
+  // Figma tokens (sampled from Christian's exports). Added alongside the originals so screens
+  // that use the tokens above look the same; restyled screens opt in to these.
+  surfaceAlt: '#F9FAFB',
+  cardBorder: '#E5E7EB',
+  chipBorder: '#D1D5DB',
+  primarySoft: '#DDF3DE',
+  primarySoftBorder: '#AFC0AF',
+  onPrimarySoft: '#111827',
+  stepper: '#111827',
+  stepperText: '#FFFFFF',
+  link: '#15803D',
+  progressTrack: '#E5E7EB',
+  progressGood: '#85D2BB',
+  progressWarning: '#DAC281',
+  progressOver: '#F17F81',
+  macroProtein: '#99AFED',
+  macroCarbs: '#EEC28F',
+  macroFat: '#C4A6F7',
+  headerHome: '#DDF3DE',
+  headerPantry: '#F3DDDD',
+  headerRecipes: '#E5DDF3',
+  headerProfile: '#DCC0DC',
+  shadow: '#000000',
 };
 
 export type ColorTokens = typeof light;
@@ -30,6 +54,29 @@ const dark: ColorTokens = {
   success: '#3FB950',
   warning: '#D29922',
   danger: '#F85149',
+
+  // The Figma file has no dark frames, so these are chosen to match the light set's roles.
+  surfaceAlt: '#121418',
+  cardBorder: '#2C3038',
+  chipBorder: '#3A3F48',
+  primarySoft: '#1F3324',
+  primarySoftBorder: '#3B5A41',
+  onPrimarySoft: '#F2F3F5',
+  stepper: '#F2F3F5',
+  stepperText: '#111827',
+  link: '#4ADE80',
+  progressTrack: '#2C3038',
+  progressGood: '#5FB8A0',
+  progressWarning: '#C9AE62',
+  progressOver: '#E06C6F',
+  macroProtein: '#8BA2E6',
+  macroCarbs: '#E5B57D',
+  macroFat: '#B597EE',
+  headerHome: '#1E2D21',
+  headerPantry: '#2F2222',
+  headerRecipes: '#26222F',
+  headerProfile: '#2E232E',
+  shadow: '#000000',
 };
 
 export const colors = { light, dark };
@@ -47,6 +94,10 @@ export const radii = {
   sm: 6,
   md: 10,
   lg: 16,
+  /** 24: the Figma food card radius (named apart from PR #5's `xl: 22`). */
+  xlSoft: 24,
+  /** 32: top corners of the food modals' sheet. */
+  sheet: 32,
   pill: 999,
 } as const;
 
