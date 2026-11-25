@@ -1,0 +1,4 @@
+# SwiftPM test package output
+.build/
+.swiftpm/
+Package.resolved
