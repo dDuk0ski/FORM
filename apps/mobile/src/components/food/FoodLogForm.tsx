@@ -26,7 +26,7 @@ import {
   servingGrams,
 } from '@/lib/nutrition';
 import { useTheme } from '@/theme';
-import type { Food, MealType } from '@/types/food';
+import type { Food, LogSource, MealType } from '@/types/food';
 
 import { MealPicker } from './MealPicker';
 import { NutritionPreview } from './NutritionPreview';
@@ -40,9 +40,9 @@ const DEFAULT_CUSTOM_GRAMS = '100';
 /**
  * Choose a meal, a serving (or custom grams) and an amount for one food, preview the scaled
  * nutrition, and add it to today's log. After a successful save the form is replaced by a
- * confirmation.
+ * confirmation. `source` is how the food was found (e.g. 'barcode'); it defaults to 'manual'.
  */
-export function FoodLogForm({ food }: { food: Food }) {
+export function FoodLogForm({ food, source }: { food: Food; source?: LogSource }) {
   const { colors, spacing, typography } = useTheme();
   const logFood = useLogFood();
   const [servingId, setServingId] = useState(() => defaultServing(food).id);
@@ -89,7 +89,7 @@ export function FoodLogForm({ food }: { food: Food }) {
     if (amount === null || logFood.isPending) {
       return;
     }
-    const base = { id: entryId, food, loggedAt: nowUtcIso(), meal };
+    const base = { id: entryId, food, loggedAt: nowUtcIso(), meal, source };
     logFood.mutate(
       isCustom
         ? buildCustomGramsLog({ ...base, grams: amount })

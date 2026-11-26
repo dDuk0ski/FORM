@@ -6,8 +6,21 @@ import { useBarcodeLookup } from '@/hooks/useBarcodeLookup';
 import { foodDetailKey } from '@/hooks/useFoodSearch';
 import { createWrapper } from '@/test-utils/providers';
 
+/**
+ * createWrapper plus gcTime Infinity for mutations (it already does this for queries), so a
+ * finished mutation leaves no 5-minute garbage-collection timer keeping Jest alive.
+ */
+function createTestWrapper() {
+  const result = createWrapper();
+  result.queryClient.setDefaultOptions({
+    queries: { retry: false, gcTime: Infinity },
+    mutations: { retry: false, gcTime: Infinity },
+  });
+  return result;
+}
+
 async function setup() {
-  const { queryClient, wrapper } = createWrapper();
+  const { queryClient, wrapper } = createTestWrapper();
   const hook = await renderHook(() => useBarcodeLookup(), { wrapper });
   return { queryClient, ...hook };
 }
