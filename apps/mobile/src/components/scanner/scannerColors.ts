@@ -6,17 +6,17 @@ import { colors } from '@/theme';
 const dark = colors.dark;
 
 export const scannerColors = {
-  /** Mockup #000000 → shadow (#000000). */
+  /** Mockup black camera area → shadow (black in both palettes). */
   camera: dark.shadow,
-  /** Mockup #525253 → chipBorder (#3A3F48), the closest gray. */
+  /** Mockup mid-gray panel → chipBorder, the closest existing gray (a little darker). */
   panel: dark.chipBorder,
-  /** Mockup white title, brackets and labels → onPrimary (#FFFFFF). */
+  /** Mockup white title, brackets and labels → onPrimary (white). */
   onCamera: dark.onPrimary,
-  /** Mockup pill #65995D → success (#3FB950), the closest green. */
+  /** Mockup muted-green pill → success, the closest existing green. */
   caption: dark.success,
-  /** Dark text on the green pill: white on #3FB950 would fail WCAG AA contrast. */
+  /** Dark text on the green pill: white on `success` would fail WCAG AA contrast. */
   onCaption: dark.stepperText,
-  /** Mockup scan line #8AD48E → link (#4ADE80), the closest bright green. */
+  /** Mockup light-green scan line → link, the closest existing bright green. */
   scanLine: dark.link,
   field: dark.surface,
   fieldText: dark.text,
