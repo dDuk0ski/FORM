@@ -1,4 +1,7 @@
 import {
+  formatMealKcal,
+  mealKcalTotals,
+  parseMeal,
   formatKcalGrouped,
   kcalSummary,
   EMPTY_MACROS,
@@ -25,7 +28,7 @@ import {
   sumNutrient,
   targetProgress,
 } from '@/lib/nutrition';
-import type { Food } from '@/types/food';
+import type { Food, FoodLogEntry } from '@/types/food';
 
 // Clean numbers so expected values are exact by hand.
 const food: Food = {
@@ -488,5 +491,59 @@ describe('kcalSummary', () => {
     expect(formatKcalGrouped(999)).toBe('999');
     expect(formatKcalGrouped(1000)).toBe('1,000');
     expect(formatKcalGrouped(12345.6)).toBe('12,346');
+  });
+});
+
+describe('mealKcalTotals', () => {
+  const entry = (meal: FoodLogEntry['meal'], kcal: number | null, id: string): FoodLogEntry => ({
+    id,
+    food_id: 'f_x',
+    food_name: 'X',
+    date: '2026-10-31',
+    logged_at: '2026-10-31T12:00:00.000Z',
+    meal,
+    source: 'manual',
+    serving_label: null,
+    serving_quantity: null,
+    grams: 100,
+    nutrients: { kcal, protein_g: 1, carb_g: 1, fat_g: 1 },
+  });
+
+  it('sums each meal separately', () => {
+    const totals = mealKcalTotals([
+      entry('breakfast', 300, 'a'),
+      entry('breakfast', 120, 'b'),
+      entry('dinner', 530, 'c'),
+    ]);
+    expect(formatMealKcal(totals.breakfast).text).toBe('420 kcal');
+    expect(formatMealKcal(totals.dinner).text).toBe('530 kcal');
+  });
+
+  it('marks a meal partial when one entry is unknown, and never counts it as 0', () => {
+    const totals = mealKcalTotals([entry('lunch', 120, 'a'), entry('lunch', null, 'b')]);
+    expect(totals.lunch).toEqual({ entries: 2, kcal: { value: 120, hasUnknown: true } });
+    expect(formatMealKcal(totals.lunch).text).toBe('120 kcal+');
+  });
+
+  it('shows a dash when every entry in a meal is unknown', () => {
+    const totals = mealKcalTotals([entry('snack', null, 'a')]);
+    expect(formatMealKcal(totals.snack).text).toBe('—');
+  });
+
+  it('shows 0 kcal only for a meal with no entries', () => {
+    const totals = mealKcalTotals([entry('lunch', null, 'a')]);
+    expect(totals.breakfast.entries).toBe(0);
+    expect(formatMealKcal(totals.breakfast).text).toBe('0 kcal');
+    expect(formatMealKcal(totals.lunch).text).not.toBe('0 kcal');
+  });
+});
+
+describe('parseMeal', () => {
+  it('accepts meal values and rejects anything else', () => {
+    expect(parseMeal('dinner')).toBe('dinner');
+    expect(parseMeal('snack')).toBe('snack');
+    expect(parseMeal('Snacks')).toBeUndefined();
+    expect(parseMeal(undefined)).toBeUndefined();
+    expect(parseMeal(['dinner'])).toBeUndefined();
   });
 });

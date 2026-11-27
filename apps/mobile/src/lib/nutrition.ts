@@ -1,5 +1,6 @@
 import type { IsoDateTime } from '@/types/api';
 import { localDateOf } from '@/lib/dates';
+import { MEAL_TYPES } from '@/types/food';
 import type {
   Food,
   FoodLogEntry,
@@ -220,6 +221,45 @@ export function formatTotalAgainstTarget(
     text: `${amount} / ${goal} ${unit}`,
     accessibilityLabel: `${consumed.accessibilityLabel}, target ${goal} ${unitWord(unit)}`,
   };
+}
+
+/** One meal's calories for the day: how many entries it has, and their kcal total. */
+export interface MealKcal {
+  entries: number;
+  kcal: NutrientTotal;
+}
+
+/**
+ * Calories per meal, summed from the day's entries the same way as the daily totals: known
+ * values only, flagged as partial when any entry's calories were unknown. A meal with no
+ * entries has `entries: 0` (and a total of 0); unknown is never turned into 0.
+ */
+export function mealKcalTotals(entries: readonly FoodLogEntry[]): Record<MealType, MealKcal> {
+  const byMeal = (meal: MealType) => {
+    const items = entries.filter((entry) => entry.meal === meal);
+    return { entries: items.length, kcal: sumMacros(items.map((entry) => entry.nutrients)).kcal };
+  };
+  return {
+    breakfast: byMeal('breakfast'),
+    lunch: byMeal('lunch'),
+    dinner: byMeal('dinner'),
+    snack: byMeal('snack'),
+  };
+}
+
+/** "0 kcal" for a meal with no entries, "420 kcal", "120 kcal+" (partial) or "—" (unknown). */
+export function formatMealKcal(meal: MealKcal): NutrientDisplay {
+  if (meal.entries === 0) {
+    return { text: '0 kcal', accessibilityLabel: 'nothing logged' };
+  }
+  return formatNutrientTotal(meal.kcal, 'kcal');
+}
+
+/** Parse a route param into a meal, or undefined when it is missing or not a meal. */
+export function parseMeal(value: unknown): MealType | undefined {
+  return typeof value === 'string' && (MEAL_TYPES as readonly string[]).includes(value)
+    ? (value as MealType)
+    : undefined;
 }
 
 /** Whole calories with thousands separators, for headlines: 2680 -> "2,680". */

@@ -52,6 +52,11 @@ const light = {
   // dark palette below repeats these values.
   scanHint: '#65995D',
   scanLine: '#8AD48E',
+  // Meal row tabs on Log food (from the "Log food" frame).
+  mealBreakfast: '#E5C07B',
+  mealLunch: '#A0D794',
+  mealDinner: '#8E8FA8',
+  mealSnack: '#E57B7B',
 };
 
 export type ColorTokens = typeof light;
@@ -100,6 +105,10 @@ const dark: ColorTokens = {
   foodTabKhaki: '#7D7660',
   scanHint: '#65995D',
   scanLine: '#8AD48E',
+  mealBreakfast: '#A8884A',
+  mealLunch: '#5E8F54',
+  mealDinner: '#5F607A',
+  mealSnack: '#A85252',
 };
 
 export const colors = { light, dark };
