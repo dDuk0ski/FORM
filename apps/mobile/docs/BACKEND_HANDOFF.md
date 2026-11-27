@@ -113,36 +113,70 @@ look the same in both modes.
 | 6   | **`GET /today` on main** uses the server's date (`date.today()`), has no `date` parameter and reads `consumed` from `daily_records`. PR #12 (open draft) reads `food_log_entries` for the user's local day from `profiles.timezone` and accepts `?date=`. | Damjan (PR #12, handed to Joey to review and merge) | `backend/routers/today.py` on `backend/today-live-targets`                                       |
 | 7   | **Today totals source.** Today's numbers come from `GET /today`; the Nutrition card sums the log. They disagree until `/today` reads `food_log_entries` (PR #12).                                                                                         | Damjan                                              |                                                                                                  |
 
-## Barcode lookup (not connected)
+## Barcode lookup
 
-The app has a barcode scanner (`src/app/(modals)/scan-barcode.tsx`) that works on fake sample
-codes in mock mode. **Barcode lookup: needs a server endpoint (Joey) and a decision on how
-barcodes are stored (Austen): `foods.source`/`source_id` vs a barcode column; the app will call
-whatever contract is agreed through `src/api/barcode.ts`.**
+The scanner (`src/app/(modals)/scan-barcode.tsx`) uses fake sample codes in mock mode (the
+default) and Joey's server endpoint in real mode (`EXPO_PUBLIC_USE_MOCKS=0`). The real client is
+`src/api/barcode.real.ts`, wired in `src/api/barcode.ts`. Contract read from
+`backend/routers/barcode.py` and `backend/auth.py` on `origin/barcode-lookup` (not merged to
+main when this was written).
 
-What is on `origin/main` (`ab16bfa`) today, read from the repo only:
+### Request the app sends
 
-- No barcode or food-lookup route in `backend/` (only `routers/today.py`), and none on
-  `backend/today-live-targets`. Nothing in `src/api/ml.ts` or `src/types/api.ts` either.
-- `foods` already has a nullable `barcode VARCHAR` column
-  (`20261022210543_add_foods_and_food_logs.sql`), with no index or unique constraint, and no
-  seed row sets it. `foods` also has `source` and `source_id`; there is no unique index on
-  `foods (source, source_id)` (the only `UNIQUE (source, source_id)` is on `exercises`). So the
-  decision is which column holds the code, and whether it gets a unique index for caching.
-- `food_logs.source` already allows `'barcode'` (`20261101180000_add_check_constraints.sql`), and
-  the app saves it for foods found by barcode.
-- The pantry TODO on main says barcode lookup should go through the server (Open Food Facts,
-  cached in `foods`). The app does not call Open Food Facts itself.
+`GET {EXPO_PUBLIC_ML_URL}/barcode/{code}` with `Authorization: Bearer <Supabase access token>`
+and `Accept: application/json`. The app only calls `EXPO_PUBLIC_ML_URL`; the server talks to
+Open Food Facts, never the app.
 
-What the app needs, whatever the shape: given an EAN-8 / UPC-A / EAN-13 string (digits only,
-leading zeros kept, check digit already validated; UPC-E is expanded to UPC-A first), return one
-food the app can open with `getFood(id)` (so it must exist in `foods`, with `food_macros`), or
-"not found". Unknown nutrients must stay null. Until then real mode rejects with
-`BarcodeNotAvailableError` and makes no network call.
+- **Token required.** The token comes from `supabase.auth.getSession()`. With no session the app
+  shows "Sign in to look up barcodes." and sends nothing.
+- **Always the 13-digit form.** The code is already validated (digits only, GS1 check digit,
+  UPC-E expanded to UPC-A). A 12-digit UPC-A is sent with a leading `0` (`toEan13` in
+  `src/lib/barcode.ts`); EAN-13 and EAN-8 are sent unchanged. iPhones usually report a UPC-A as
+  the EAN-13 with a leading 0 and Android as 12 digits, and the server's `foods.barcode` cache
+  compares the string exactly, so one product must always arrive in one form. Rows cached by
+  any other client in the 12-digit form will not match.
+- The code is `encodeURIComponent`-encoded in the path. Timeout: 15 s (the server gives Open
+  Food Facts 10 s), handled like a network failure.
 
-Not verified: whether Open Food Facts' terms, rate limits or data quality suit this; how a
-13-digit EAN and its 12-digit UPC-A should be matched in storage (the mock compares 14-digit
-GTINs); and whether real mode also needs real sign-in (Mason) for the lookup call.
+### Response the app expects
+
+200: `{ "food": { id, name, brand, serving_g, serving_label, barcode, source, ... }, "macros":
+{ kcal_per_100g, protein_g_per_100g, carb_g_per_100g, fat_g_per_100g } | null, "cached": bool }`.
+
+- Numbers may be numbers or numeric strings. Any macro may be null; `macros: null` means all four
+  are unknown. Unknown stays null in the app, never 0. Non-numeric, non-finite or negative
+  values are treated as unknown.
+- **`serving_label` is ignored.** The server fills it from Open Food Facts' `quantity` (the
+  package size, for example "400 g") while `serving_g` comes from `serving_quantity` (one
+  serving), so the two disagree. The app shows one serving as `1 serving (<serving_g> g)` when
+  `serving_g > 0`, and no serving otherwise (the form falls back to 100 g / custom grams, as for
+  search results). Suggested server fix: store the per-serving label (`serving_size`) in
+  `serving_label`, or leave it null.
+- A 200 without a usable `food` (no id or name) is treated as a server failure.
+
+| Status                            | App behaviour                                                            |
+| --------------------------------- | ------------------------------------------------------------------------ |
+| 200                               | Opens Add food with the mapped food                                      |
+| 404 (not found)                   | "We couldn't find that product" (Scan again / Search by name)            |
+| 400 (not 8-14 digits)             | Same as 404; the app never sends such a code                             |
+| 401 (missing/invalid token)       | "Sign in again to look up barcodes."                                     |
+| 500, 502, other, network, timeout | "Barcode lookup is unavailable right now. Try again, or search by name." |
+
+The `detail` text of error bodies is never shown.
+
+### Opening the food after a scan
+
+The looked-up `Food` is written to the food-detail query cache (`['foods', 'detail', id]`,
+`useBarcodeLookup`) before the scanner navigates, so Add food opens without a second call. If
+a later refetch through `getFood` (Supabase `foods` + `food_macros`) cannot find the food, the
+cached food stays on screen, and a failed background refetch does not replace the form.
+`food_logs.source = 'barcode'` is saved as before.
+
+Not verified (needs the live backend and a signed-in user): the endpoint end to end; that the
+nutrient codes the server writes (`energy_kcal`, `protein`, `carbohydrate`, `fat`) feed the
+`food_macros` view's four columns; that a signed-in user can read the inserted `foods` row
+through RLS (logging it needs `food_logs.food_id` to reference it); and Open Food Facts' terms,
+rate limits and data quality.
 
 ## Frontend files that consume the contract
 
@@ -154,4 +188,5 @@ GTINs); and whether real mode also needs real sign-in (Mason) for the lookup cal
 | `src/api/foods.mock.ts`     | Sample data and on-device log, used by default and in tests                                |
 | `src/lib/nutrition.ts`      | Scaling, known-only totals, formatting of unknown and partial values                       |
 | `src/types/food.ts`         | `Food`, `FoodLogEntry`, `NewFoodLog`; `MEAL_TYPES` and `LOG_SOURCES` match the CHECKs      |
-| `src/api/barcode.ts`        | Barcode lookup switch: fake sample codes by default; real mode not connected yet           |
+| `src/api/barcode.ts`        | Barcode lookup switch: fake sample codes by default; `GET /barcode/{code}` in real mode    |
+| `src/api/barcode.real.ts`   | Real barcode client: token, 13-digit code, response mapping, error messages                |
