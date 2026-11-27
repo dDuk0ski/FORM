@@ -13,7 +13,13 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "FORM uses the camera to scan food barcodes."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -98,6 +98,92 @@ as unknown. The tests use test-only foods with null values. On main, `food_macro
 `food_log_entries` return null for an unknown macro (`is_known = false`), and the Supabase
 service keeps it null. The seed has 18 unknown nutrient values across its 57 foods.
 
+## Barcode scanning
+
+Status (Nov 26): works end to end in **mock mode** with fake sample barcodes. Real mode is not
+connected: there is no server barcode route yet, so a lookup shows "Barcode lookup is not
+connected to the server yet." with Retry. The app never calls Open Food Facts or any other URL.
+
+### Flow
+
+1. Log food → **Scan barcode** opens `/scan-barcode` (a modal).
+2. Point the camera at an EAN-13, EAN-8, UPC-A or UPC-E barcode, **or** type the digits under
+   **Or type the barcode** and tap **Look up**. Typed codes are checked first (empty, letters,
+   wrong length, bad GS1 check digit each get an inline message).
+3. "Looking up…", then:
+   - **Found**: the scan modal is replaced by **Add food** (`/food-detail`) with
+     `params: { id, source: 'barcode' }`, so the saved `food_logs` row has `source = 'barcode'`.
+     Opened from search (no `source` param), it still saves `'manual'`.
+   - **Not found**: "We couldn't find that product" with **Scan again** and **Search by name**
+     (back to Log food).
+   - **Error**: the message, **Retry**, **Scan again** and **Search by name**.
+
+The camera accepts one valid scan at a time; repeats are ignored until **Scan again**, and the
+same code is ignored for 2 seconds after it was accepted. Misreads (bad check digit) are ignored.
+
+### Files
+
+```
+src/app/(modals)/scan-barcode.tsx      the screen (lookup states, navigation)
+src/components/scanner/                BarcodeScanner (camera, permission states, frame), BarcodeEntry
+                                       (typed field), scanGuard (one scan at a time), scannerColors
+src/hooks/useBarcodeLookup.ts          TanStack Query mutation, retry off
+src/lib/barcode.ts                     normalizeBarcode, isValidBarcode (GS1 check digit), parseBarcode,
+                                       expandUpcE, toGtin14
+src/api/barcode.ts                     the switch (same EXPO_PUBLIC_USE_MOCKS rule as foods.ts)
+src/api/barcode.types.ts               BarcodeService, BarcodeNotAvailableError
+src/api/barcode.mock.ts                fake sample barcodes → existing sample foods
+```
+
+`src/components/scanner/` knows nothing about food (it only reports a valid code), so the pantry
+can reuse it later.
+
+### Mock vs real mode
+
+| Mode                             | `lookupBarcode(code)`                                               |
+| -------------------------------- | ------------------------------------------------------------------- |
+| Mock (default)                   | Sample map below; any other valid code resolves to null (not found) |
+| Real (`EXPO_PUBLIC_USE_MOCKS=0`) | Rejects with `BarcodeNotAvailableError`; no network call            |
+
+Sample barcodes are FAKE (GS1 prefix 2 is reserved for in-store use, never a branded product)
+with valid check digits. They point at foods that already exist in `src/mocks/foods.ts`:
+
+| Code            | Type   | Result                             |
+| --------------- | ------ | ---------------------------------- |
+| `2000000000015` | EAN-13 | Banana, raw                        |
+| `2000000000022` | EAN-13 | Oats, rolled, dry                  |
+| `200000000042`  | UPC-A  | Greek yogurt, plain, nonfat        |
+| `20000004`      | EAN-8  | Whey protein powder                |
+| `2000000000992` | EAN-13 | Valid, not in the map: "not found" |
+
+### Testing on the iOS Simulator
+
+The Simulator has no camera, so use the typed field with the codes above. Whether the Simulator
+shows the "No camera available" message (via `CameraView` `onMountError`) or a blank camera area
+is not verified; the typed field works either way. Camera scanning needs a real iPhone (Expo Go,
+or a development build to show FORM's own permission text).
+
+### Design
+
+Matches Christian's `scan screen` mockup: black camera area, white rounded corner brackets, a
+glowing green line across the middle (a slow pulse; static when Reduce Motion is on), a green
+caption pill, a back arrow, and a gray lower panel holding the typed field. Differences: the title
+is "Scan barcode" (mockup: "Add"), the caption is "Fit the barcode inside the frame" (mockup:
+receipt text), the tab bar and profile avatar are left out (it is a modal), the frame sits fully
+inside the camera area, the back arrow is white, and the pill text is dark for contrast. The
+scanner always uses the dark palette from `src/theme.ts`; no tokens were added (mapping in
+`src/components/scanner/scannerColors.ts`).
+
+### Shared files changed for the scanner
+
+- `package.json` / `package-lock.json`: `expo-camera` `~58.0.14` (via `npx expo install`), which
+  also brings `barcode-detector`, `zxing-wasm` and `@types/emscripten` (its web fallback).
+- `app.json`: the `expo-camera` config plugin with
+  `cameraPermission: "FORM uses the camera to scan food barcodes."`. It takes effect in a native
+  build (development build / TestFlight), not in Expo Go.
+- `src/app/(modals)/log-food.tsx`: the **Scan barcode** button. `food-detail.tsx` and
+  `FoodLogForm.tsx`: an optional `source` (default `'manual'`).
+
 ## Changes to shared files (Mason: please glance at these)
 
 All additive; every existing default looks the same.
@@ -120,5 +206,6 @@ All additive; every existing default looks the same.
 npx tsc --noEmit && npx eslint . --max-warnings 0 && npx jest --ci
 ```
 
-After `npm start` has run once (it generates typed routes), `/food-detail` is a valid route for
-`router.push`. Run `npm run format` before committing.
+After `npm start` has run once (it generates typed routes), `/food-detail` and `/scan-barcode`
+are valid routes for `router.push`; an older generated `.expo/types/router.d.ts` makes
+`tsc` reject `/scan-barcode` until `npm start` runs again. Run `npm run format` before committing.
