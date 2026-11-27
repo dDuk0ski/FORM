@@ -15,7 +15,8 @@ import { useTheme } from '@/theme';
 // not found: "Scan again" or "Search by name" / error: message with Retry (and the same
 // two ways out).
 // Lookups go through barcodeService (src/api/barcode.ts): fake sample codes in mock mode;
-// in real mode the server lookup is not connected yet, which shows as an error here.
+// the ML service's GET /barcode/{code} in real mode. useBarcodeLookup puts the found food in
+// the food-detail cache before this screen navigates, so detail opens without another call.
 export default function ScanBarcodeModal() {
   // `meal` comes from the meal-first Log food's search; it is passed on to food detail.
   const meal = parseMeal(useLocalSearchParams<{ meal?: string }>()?.meal);
