@@ -4,6 +4,7 @@ import { Card, ProgressBar } from '@/components';
 import {
   formatNutrientTotal,
   formatTotalAgainstTarget,
+  kcalSummary,
   targetProgress,
   type NutrientUnit,
 } from '@/lib/nutrition';
@@ -82,11 +83,27 @@ function MacroProgressRow({ label, consumed, target, unit, tone }: MacroRowProps
 /** Calories, protein, carbs and fat for the day, with progress toward targets when known. */
 export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutritionCardProps) {
   const { colors, spacing, typography } = useTheme();
+  const summary = kcalSummary(totals.kcal, targets?.kcal);
   return (
     <Card variant="soft" style={{ gap: spacing.md }}>
       <Text accessibilityRole="header" style={[typography.heading, { color: colors.text }]}>
         Nutrition
       </Text>
+      {summary ? (
+        <View style={{ gap: spacing.xs / 2 }}>
+          <Text
+            accessibilityLabel={summary.headline.accessibilityLabel}
+            style={[typography.title, { color: colors.text, fontVariant: ['tabular-nums'] }]}
+          >
+            {summary.headline.text}
+          </Text>
+          <Text
+            style={[typography.label, { color: colors.textMuted, fontVariant: ['tabular-nums'] }]}
+          >
+            {summary.detail}
+          </Text>
+        </View>
+      ) : null}
       <MacroProgressRow
         label="Calories"
         consumed={totals.kcal}

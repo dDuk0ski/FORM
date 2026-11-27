@@ -245,6 +245,22 @@ describe('DailyNutritionCard', () => {
     });
   });
 
+  it('adds a kcal left headline over the bars', async () => {
+    await renderWithProviders(<DailyNutritionCard totals={totals} targets={targets} />);
+    expect(screen.getByText('2,575 kcal left')).toBeOnTheScreen();
+    expect(screen.getByText('105 eaten of 2,680')).toBeOnTheScreen();
+  });
+
+  it('shows no kcal left number when calories are partly unknown', async () => {
+    const partial = sumMacros([
+      { kcal: 105, protein_g: 1, carb_g: 1, fat_g: 1 },
+      { kcal: null, protein_g: 1, carb_g: 1, fat_g: 1 },
+    ]);
+    await renderWithProviders(<DailyNutritionCard totals={partial} targets={targets} />);
+    expect(screen.getByText('105 kcal+ eaten')).toBeOnTheScreen();
+    expect(screen.queryByText(/kcal left/)).toBeNull();
+  });
+
   it('shows totals only, with no progress bars, when there are no targets', async () => {
     await renderWithProviders(<DailyNutritionCard totals={totals} />);
     expect(screen.getByText('105 kcal')).toBeOnTheScreen();

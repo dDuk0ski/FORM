@@ -222,6 +222,61 @@ export function formatTotalAgainstTarget(
   };
 }
 
+/** Whole calories with thousands separators, for headlines: 2680 -> "2,680". */
+export function formatKcalGrouped(value: number): string {
+  return formatKcal(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/** The calorie headline over the nutrition bars, e.g. "1,075 kcal left" / "1,605 eaten of 2,680". */
+export interface KcalSummary {
+  headline: NutrientDisplay;
+  detail: string;
+}
+
+/**
+ * "X kcal left" and "Y eaten of Z" from the day's calorie total and target. A "left" number
+ * is only given when every entry's calories are known; a partial total shows "120 kcal+
+ * eaten" and an unknown one "— eaten" instead, so unknown is never counted as 0. Null when
+ * there is no usable target.
+ */
+export function kcalSummary(
+  total: NutrientTotal,
+  target: number | undefined | null,
+): KcalSummary | null {
+  if (target === undefined || target === null || !(target > 0)) {
+    return null;
+  }
+  const goal = formatKcalGrouped(target);
+  if (total.value === null) {
+    return {
+      headline: { text: `${UNKNOWN_TEXT} eaten`, accessibilityLabel: 'calories eaten unknown' },
+      detail: `of ${goal} · calories unknown`,
+    };
+  }
+  const eaten = formatKcalGrouped(total.value);
+  if (total.hasUnknown) {
+    return {
+      headline: {
+        text: `${eaten} kcal+ eaten`,
+        accessibilityLabel: `at least ${eaten} calories eaten, some entries unknown`,
+      },
+      detail: `of ${goal} · some calories unknown`,
+    };
+  }
+  const remaining = Math.round(target) - Math.round(total.value);
+  const headline =
+    remaining >= 0
+      ? {
+          text: `${formatKcalGrouped(remaining)} kcal left`,
+          accessibilityLabel: `${formatKcalGrouped(remaining)} calories left`,
+        }
+      : {
+          text: `${formatKcalGrouped(-remaining)} kcal over`,
+          accessibilityLabel: `${formatKcalGrouped(-remaining)} calories over target`,
+        };
+  return { headline, detail: `${eaten} eaten of ${goal}` };
+}
+
 /** Fraction of the target reached (may exceed 1), or null when there is no usable target. */
 export function targetProgress(consumed: number, target: number | undefined | null): number | null {
   if (target === undefined || target === null || !(target > 0)) {
