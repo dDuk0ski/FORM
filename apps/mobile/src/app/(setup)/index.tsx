@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { useSaveSetupStep } from '@/hooks/useSetup';
 import type { Gender } from '@/types/setup';
@@ -18,13 +19,27 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
     { value: 'other', label: 'Other' },
 ];
 
-type ProfileErrors = { name?: string; gender?: string };
+type ProfileErrors = { name?: string; gender?: string; birthDate?: string; };
 
-function validateProfile(name: string, gender: Gender | null): ProfileErrors {
+function validateProfile(name: string, gender: Gender | null, birthDate: Date | null): ProfileErrors {
     const errors: ProfileErrors = {};
     if (name.trim() === '') errors.name = 'Enter your name';
     if (gender === null) errors.gender = 'Choose an option';
+    if (birthDate === null) errors.birthDate = 'Enter your birthdate';
     return errors;
+}
+
+// Where the calendar opens before the user has picked anything.
+const DEFAULT_BIRTHDATE = new Date(2000, 0, 1);
+const MIN_BIRTHDATE = new Date(1900, 0, 1);
+
+// YYYY-MM-DD in the user's local time. toISOString() converts to UTC first,
+// which can shift the date by a day.
+function toLocalISODate(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }
 
 type FieldProps = {
@@ -71,11 +86,15 @@ function Field({ label, value, onChangeText, placeholder, maxLength, error }: Fi
 }
 
 export default function SetupProfileScreen() {
-    const { colors } = useTheme();
+    const { colors, scheme } = useTheme();
     const [name, setName] = useState('');
     const [gender, setGender] = useState<Gender | null>(null);
+    const [birthDate, setBirthDate] = useState<Date | null>(null);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    // The date being browsed in the calendar. It only becomes birthDate when the user taps Done.
+    const [draftDate, setDraftDate] = useState<Date>(DEFAULT_BIRTHDATE);
     const [submitted, setSubmitted] = useState(false);
-    const errors: ProfileErrors = submitted ? validateProfile(name, gender) : {};
+    const errors: ProfileErrors = submitted ? validateProfile(name, gender, birthDate) : {};
     const saveStep = useSaveSetupStep();
 
     // TODO(setup): upload and save photo
@@ -83,13 +102,23 @@ export default function SetupProfileScreen() {
 
     const handleContinue = () => {
         setSubmitted(true);
-        const found = validateProfile(name, gender);
-        if (found.name || found.gender || gender === null) return;
+        const found = validateProfile(name, gender, birthDate);
+        if (Object.keys(found).length > 0 || gender === null || birthDate === null) return;
 
         saveStep.mutate(
-            { profile: { name: name.trim(), gender } },
+            { profile: { name: name.trim(), gender, birthDate: toLocalISODate(birthDate) } },
             { onSuccess: () => router.push('/body-stats') },
         );
+    };
+
+    const openDatePicker = () => {
+        setDraftDate(birthDate ?? DEFAULT_BIRTHDATE);
+        setShowDatePicker(true);
+    };
+
+    const confirmDate = () => {
+        setBirthDate(draftDate);
+        setShowDatePicker(false);
     };
 
   return (
@@ -192,6 +221,89 @@ export default function SetupProfileScreen() {
               maxLength={50}
               error={errors.name}
             />
+            {/* birthdate field */}
+            <View style={{ gap: spacing.xs }}>
+              <Text style={[typography.label, { color: colors.textMuted, textTransform: 'none' }]}>
+                  Birthdate
+              </Text>
+
+              <Pressable
+                  onPress={openDatePicker}
+                  accessibilityRole="button"
+                  accessibilityLabel="Select birthdate"
+                  style={{
+                      borderWidth: 1,
+                      borderColor: errors.birthDate ? colors.danger : colors.border,
+                      borderRadius: radii.md,
+                      padding: spacing.md,
+                  }}
+              >
+                  <Text style={[typography.body, { color: birthDate ? colors.text : colors.textMuted }]}>
+                      {birthDate ? birthDate.toLocaleDateString() : 'Select your birthdate'}
+                  </Text>
+              </Pressable>
+
+              {errors.birthDate ? (
+                  <Text accessibilityRole="alert" style={[typography.caption, { color: colors.danger }]}>
+                      {errors.birthDate}
+                  </Text>
+              ) : null}
+
+              {/* calendar popup*/}
+              <Modal
+                  visible={showDatePicker}
+                  transparent
+                  animationType="fade"
+                  onRequestClose={() => setShowDatePicker(false)}
+              >
+                  <View style={{ flex: 1, justifyContent: 'center', padding: spacing.lg }}>
+                      {/* dimmed backdrop, tap to cancel */}
+                      <Pressable
+                          onPress={() => setShowDatePicker(false)}
+                          accessibilityLabel="Close date picker"
+                          style={{
+                              position: 'absolute',
+                              top: 0, right: 0, bottom: 0, left: 0,
+                              backgroundColor: withAlpha(colors.shadow, 0.4),
+                          }}
+                      />
+
+                      <View
+                          style={{
+                              backgroundColor: colors.surface,
+                              borderRadius: radii.xl,
+                              padding: spacing.md,
+                              gap: spacing.sm,
+                          }}
+                      >
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.sm }}>
+                              <Pressable onPress={() => setShowDatePicker(false)} accessibilityRole="button" hitSlop={12}>
+                                  <Text style={[typography.body, { color: colors.textMuted }]}>Cancel</Text>
+                              </Pressable>
+                              <Text style={[typography.body, { color: colors.text, fontWeight: '600' }]}>
+                                  Birthdate
+                              </Text>
+                              <Pressable onPress={confirmDate} accessibilityRole="button" hitSlop={12}>
+                                  <Text style={[typography.body, { color: colors.primary, fontWeight: '600' }]}>Done</Text>
+                              </Pressable>
+                          </View>
+
+                          <DateTimePicker
+                              value={draftDate}
+                              mode="date"
+                              display="inline"
+                              minimumDate={MIN_BIRTHDATE}
+                              maximumDate={new Date()}
+                              themeVariant={scheme}
+                              accentColor={colors.primary}
+                              onValueChange={(_, selectedDate) => {
+                                  if (selectedDate) setDraftDate(selectedDate);
+                              }}
+                          />
+                      </View>
+                  </View>
+              </Modal>
+            </View>
             {/* gender buttons */}
             <View style={{ marginTop: spacing.lg, gap: spacing.md }}>
               <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: spacing.sm }}>

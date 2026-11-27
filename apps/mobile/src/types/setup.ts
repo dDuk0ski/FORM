@@ -5,6 +5,7 @@ export type MacroPreset = 'balanced' | 'high-protein' | 'low-carb';
 export type ProfileInput = {
     name: string;
     gender: Gender;
+    birthDate: string;
 };
 
 export type BodyStatsInput = {
@@ -27,4 +28,5 @@ export type SetupData = {
     profile?: ProfileInput;
     bodyStats?: BodyStatsInput;
     targets?: TargetsInput;
+    timezone?: string;
 };
