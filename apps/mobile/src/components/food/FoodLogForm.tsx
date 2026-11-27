@@ -43,13 +43,23 @@ const DEFAULT_CUSTOM_GRAMS = '100';
  * Choose a meal, a serving (or custom grams) and an amount for one food, preview the scaled
  * nutrition, and add it to today's log. After a successful save the form is replaced by a
  * confirmation. `source` is how the food was found (e.g. 'barcode'); it defaults to 'manual'.
+ * `initialMeal` preselects a meal (from Log food's meal "+"); it can still be changed. Without
+ * it the meal is suggested from the time of day, as before.
  */
-export function FoodLogForm({ food, source }: { food: Food; source?: LogSource }) {
+export function FoodLogForm({
+  food,
+  source,
+  initialMeal,
+}: {
+  food: Food;
+  source?: LogSource;
+  initialMeal?: MealType;
+}) {
   const { colors, spacing, typography } = useTheme();
   const logFood = useLogFood();
   const [servingId, setServingId] = useState(() => defaultServing(food).id);
   const [quantityText, setQuantityText] = useState('1');
-  const [meal, setMeal] = useState<MealType>(() => defaultMeal());
+  const [meal, setMeal] = useState<MealType>(() => initialMeal ?? defaultMeal());
   // One id per form, so a retry after a failed save cannot create a duplicate entry.
   const [entryId] = useState(newEntryId);
 

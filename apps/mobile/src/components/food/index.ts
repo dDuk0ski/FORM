@@ -16,3 +16,5 @@ export { softShadow } from './softShadow';
 export { FoodSearchField } from './FoodSearchField';
 export { AddCircle } from './AddCircle';
 export { TabbedRow } from './TabbedRow';
+export { MEAL_ROW_LABELS, MealRow } from './MealRow';
+export { LogFoodSummary } from './LogFoodSummary';

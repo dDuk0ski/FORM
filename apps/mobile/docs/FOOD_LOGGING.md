@@ -18,6 +18,11 @@ React Native 0.88.1 / RNTL 14.
 2. Tap a result to open **Add food** (`/food-detail`). Pick a meal, choose the food's serving or
    **Custom grams**, enter or step the amount, see the scaled nutrition, and tap **Add to log**.
 3. Back in Log food, **Nutrition** and **Logged today** update immediately. Entries can be removed.
+   Log food is meal first: the header shows today's "X kcal left" and "Y eaten of Z · date", and
+   four rows (Breakfast, Lunch, Dinner, Snacks) show each meal's kcal today ("120 kcal+" when an
+   entry is unknown, "—" when all are, "0 kcal" only with no entries). A row's "+" opens
+   **Add food** search (`/food-search?meal=…`); food detail (also via its scanner) then opens with
+   that meal selected, still changeable. Search and Scan barcode also stay on Log food itself.
 4. Close and reopen the app: the log is still there (stored on this device only).
 
 Every screen handles loading, empty, no-results, invalid-input, success and error states.
@@ -39,13 +44,14 @@ that feeds the Fuel tile from the food totals is kept outside the repo until PR 
 ## How it is built
 
 ```
-src/app/(modals)/log-food.tsx        search screen
+src/app/(modals)/log-food.tsx        meal rows, kcal left, search, nutrition, logged today
+src/app/(modals)/food-search.tsx     search for one meal (opened by a meal row's "+")
 src/app/(modals)/food-detail.tsx     serving + amount + add
 src/components/food/                 FoodCard, MealPicker, ServingSelector, QuantityField, NutritionPreview,
                                      DailyNutritionCard, FoodLogList, SearchResults, FoodLogForm,
                                      TodayNutrition, DataSourceNotice, MacroLine, FoodSheetScreen,
                                      RoundBackButton, FoodSearchField, TabbedRow, AddCircle,
-                                     foodTab (row tab color), softShadow
+                                     foodTab (row tab color), softShadow, MealRow, LogFoodSummary
 src/components/                      + SearchInput, ProgressBar, StateViews (shared, exported from the barrel)
 src/hooks/                           useFoodSearch / useFood, useFoodLog (+ useLogFood, useRemoveLogEntry,
                                      useDailyNutrition), useDebouncedValue
