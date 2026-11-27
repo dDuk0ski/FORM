@@ -1,8 +1,4 @@
-import {
-  BarcodeNotAvailableError,
-  createBarcodeService,
-  unavailableBarcodeService,
-} from '@/api/barcode';
+import { BarcodeNotAvailableError, createBarcodeService } from '@/api/barcode';
 import { SAMPLE_BARCODES, SAMPLE_UNKNOWN_BARCODE, mockBarcodeService } from '@/api/barcode.mock';
 import { isValidBarcode } from '@/lib/barcode';
 import { foodsFixture } from '@/mocks/foods';
@@ -44,14 +40,15 @@ describe('barcode service switch', () => {
     expect(createBarcodeService(true)).toBe(mockBarcodeService);
   });
 
-  it('rejects with BarcodeNotAvailableError in real mode, without any network call', async () => {
+  it('uses the real service in real mode; with no session it rejects without any network call', async () => {
     const fetchSpy = jest.spyOn(globalThis, 'fetch');
     const service = createBarcodeService(false);
-    expect(service).toBe(unavailableBarcodeService);
+    expect(service).not.toBe(mockBarcodeService);
 
+    // Under Jest there is no signed-in Supabase session.
     const lookup = service.lookupBarcode('2000000000015');
     await expect(lookup).rejects.toBeInstanceOf(BarcodeNotAvailableError);
-    await expect(lookup).rejects.toThrow('Barcode lookup is not connected to the server yet.');
+    await expect(lookup).rejects.toThrow('Sign in to look up barcodes.');
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
@@ -71,14 +68,16 @@ describe('barcode service switch', () => {
     });
   });
 
-  it('uses the unavailable service when EXPO_PUBLIC_USE_MOCKS=0', () => {
+  it('uses the real service when EXPO_PUBLIC_USE_MOCKS=0', () => {
     jest.isolateModules(() => {
       const original = process.env.EXPO_PUBLIC_USE_MOCKS;
       process.env.EXPO_PUBLIC_USE_MOCKS = '0';
       try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const fresh = require('@/api/barcode') as typeof import('@/api/barcode');
-        expect(fresh.barcodeService).toBe(fresh.unavailableBarcodeService);
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const mock = require('@/api/barcode.mock') as typeof import('@/api/barcode.mock');
+        expect(fresh.barcodeService).not.toBe(mock.mockBarcodeService);
       } finally {
         if (original === undefined) {
           delete process.env.EXPO_PUBLIC_USE_MOCKS;

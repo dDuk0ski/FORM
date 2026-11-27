@@ -85,3 +85,13 @@ export function parseBarcode(input: string): BarcodeResult {
   }
   return { ok: true, code };
 }
+
+/**
+ * The 13-digit form of a code, for sending to the server: a 12-digit UPC-A gets a leading 0
+ * (the EAN-13 for the same product, which is also what iPhones usually report). EAN-13,
+ * EAN-8 and anything else are returned unchanged. The server's barcode cache compares the
+ * string exactly, so the same product must always be sent the same way.
+ */
+export function toEan13(code: string): string {
+  return /^\d{12}$/.test(code) ? `0${code}` : code;
+}

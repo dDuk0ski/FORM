@@ -21,7 +21,10 @@ export default function FoodDetailModal() {
   return (
     <FoodSheetScreen title="Add food" tint="headerAddFood" onBack={() => router.back()}>
       <DataSourceNotice />
-      {food.isLoading ? (
+      {/* A food already on screen stays there even if a background refetch fails. */}
+      {food.data ? (
+        <FoodLogForm key={food.data.id} food={food.data} source={source} initialMeal={meal} />
+      ) : food.isLoading ? (
         <LoadingState label="Loading food…" />
       ) : food.isError ? (
         <ErrorState
@@ -29,8 +32,6 @@ export default function FoodDetailModal() {
           message={errorMessage(food.error, 'Go back and try again.')}
           onRetry={() => void food.refetch()}
         />
-      ) : food.data ? (
-        <FoodLogForm key={food.data.id} food={food.data} source={source} initialMeal={meal} />
       ) : (
         <EmptyState
           title="Food not found"

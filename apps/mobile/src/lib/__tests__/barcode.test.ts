@@ -4,6 +4,7 @@ import {
   isValidBarcode,
   normalizeBarcode,
   parseBarcode,
+  toEan13,
   toGtin14,
 } from '@/lib/barcode';
 
@@ -100,5 +101,18 @@ describe('parseBarcode', () => {
       ok: false,
       error: 'That barcode isn’t valid. Check the digits and try again.',
     });
+  });
+});
+
+describe('toEan13', () => {
+  it('pads a 12-digit UPC-A with a leading 0', () => {
+    expect(toEan13(UPCA)).toBe(`0${UPCA}`);
+    expect(isValidBarcode(toEan13(UPCA))).toBe(true);
+  });
+
+  it('keeps EAN-13 and EAN-8 unchanged', () => {
+    expect(toEan13(EAN13)).toBe(EAN13);
+    expect(toEan13(`0${UPCA}`)).toBe(`0${UPCA}`);
+    expect(toEan13(EAN8)).toBe(EAN8);
   });
 });

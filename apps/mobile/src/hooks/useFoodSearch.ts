@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { foodService } from '@/api/foods';
 import { MIN_QUERY_LENGTH, normalizeQuery } from '@/lib/foodSearch';
 import type { FoodId } from '@/types/api';
+import type { Food } from '@/types/food';
 
 export const foodSearchKey = (query: string) => ['foods', 'search', query] as const;
 export const foodDetailKey = (id: FoodId) => ['foods', 'detail', id] as const;
@@ -23,11 +24,23 @@ export function useFoodSearch(query: string) {
   });
 }
 
-/** One food by id. `data` is null when the id does not exist. */
+/**
+ * One food by id. `data` is null when the id does not exist.
+ *
+ * A food may already be in the cache from somewhere other than getFood (a barcode lookup puts
+ * the server's result there before food detail opens). If a later refetch cannot find it
+ * through getFood, the cached food is kept instead of being replaced by null, so the screen
+ * never blanks a food it was already showing.
+ */
 export function useFood(id: FoodId | undefined) {
+  const queryClient = useQueryClient();
+  const key = foodDetailKey(id ?? '');
   return useQuery({
-    queryKey: foodDetailKey(id ?? ''),
-    queryFn: () => foodService.getFood(id ?? ''),
+    queryKey: key,
+    queryFn: async () => {
+      const food = await foodService.getFood(id ?? '');
+      return food ?? queryClient.getQueryData<Food | null>(key) ?? null;
+    },
     enabled: Boolean(id),
     staleTime: 5 * 60_000,
     retry: false,

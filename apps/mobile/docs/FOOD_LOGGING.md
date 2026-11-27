@@ -125,9 +125,11 @@ service keeps it null. The seed has 18 unknown nutrient values across its 57 foo
 
 ## Barcode scanning
 
-Status (Nov 26): works end to end in **mock mode** with fake sample barcodes. Real mode is not
-connected: there is no server barcode route yet, so a lookup shows "Barcode lookup is not
-connected to the server yet." with Retry. The app never calls Open Food Facts or any other URL.
+Status (Nov 27): works end to end in **mock mode** with fake sample barcodes. Real mode calls
+the ML service's `GET /barcode/{code}` (Joey's `barcode-lookup` branch) with the user's Supabase
+access token; it is tested with a fake `fetch` and session only, not yet against the live
+server. The app never calls Open Food Facts or any other URL besides `EXPO_PUBLIC_ML_URL`.
+Contract and status handling: `docs/BACKEND_HANDOFF.md` ("Barcode lookup").
 
 ### Flow
 
@@ -137,8 +139,10 @@ connected to the server yet." with Retry. The app never calls Open Food Facts or
    wrong length, bad GS1 check digit each get an inline message).
 3. "Looking up…", then:
    - **Found**: the scan modal is replaced by **Add food** (`/food-detail`) with
-     `params: { id, source: 'barcode' }`, so the saved `food_logs` row has `source = 'barcode'`.
-     Opened from search (no `source` param), it still saves `'manual'`.
+     `params: { id, source: 'barcode' }` (plus `meal` when opened from a meal), so the saved
+     `food_logs` row has `source = 'barcode'`. Opened from search (no `source` param), it still
+     saves `'manual'`. The found food is put in the food-detail cache first, so Add food opens
+     without another request.
    - **Not found**: "We couldn't find that product" with **Scan again** and **Search by name**
      (back to Log food).
    - **Error**: the message, **Retry**, **Scan again** and **Search by name**.
@@ -154,9 +158,10 @@ src/components/scanner/                BarcodeScanner (camera, permission states
                                        (typed field), scanGuard (one scan at a time), scannerColors
 src/hooks/useBarcodeLookup.ts          TanStack Query mutation, retry off
 src/lib/barcode.ts                     normalizeBarcode, isValidBarcode (GS1 check digit), parseBarcode,
-                                       expandUpcE, toGtin14
+                                       expandUpcE, toGtin14, toEan13 (12-digit UPC-A → 13 digits)
 src/api/barcode.ts                     the switch (same EXPO_PUBLIC_USE_MOCKS rule as foods.ts)
-src/api/barcode.types.ts               BarcodeService, BarcodeNotAvailableError
+src/api/barcode.real.ts                real mode: GET {EXPO_PUBLIC_ML_URL}/barcode/{code}, mapping
+src/api/barcode.types.ts               BarcodeService, error classes and user-safe messages
 src/api/barcode.mock.ts                fake sample barcodes → existing sample foods
 ```
 
@@ -165,10 +170,23 @@ can reuse it later.
 
 ### Mock vs real mode
 
-| Mode                             | `lookupBarcode(code)`                                               |
-| -------------------------------- | ------------------------------------------------------------------- |
-| Mock (default)                   | Sample map below; any other valid code resolves to null (not found) |
-| Real (`EXPO_PUBLIC_USE_MOCKS=0`) | Rejects with `BarcodeNotAvailableError`; no network call            |
+| Mode                             | `lookupBarcode(code)`                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------- |
+| Mock (default)                   | Sample map below; any other valid code resolves to null (not found). No network call. |
+| Real (`EXPO_PUBLIC_USE_MOCKS=0`) | `GET {EXPO_PUBLIC_ML_URL}/barcode/{13-digit code}` with the Bearer token (see below)  |
+
+Real mode needs `EXPO_PUBLIC_USE_MOCKS=0`, `EXPO_PUBLIC_ML_URL`, `EXPO_PUBLIC_SUPABASE_URL`,
+`EXPO_PUBLIC_SUPABASE_ANON_KEY` and a signed-in Supabase session. Messages the user can see:
+
+- No session: "Sign in to look up barcodes." (no request is sent)
+- 404 or 400: "We couldn't find that product"
+- 401: "Sign in again to look up barcodes."
+- 500, 502, network failure or 15 s timeout: "Barcode lookup is unavailable right now. Try
+  again, or search by name."
+
+Nutrients the server does not know stay unknown (`macros: null` means all four). The serving
+shown is `1 serving (<serving_g> g)`; the server's `serving_label` is ignored because it holds
+the package size, not the serving. With no `serving_g` the form offers 100 g / custom grams.
 
 Sample barcodes are FAKE (GS1 prefix 2 is reserved for in-store use, never a branded product)
 with valid check digits. They point at foods that already exist in `src/mocks/foods.ts`:
