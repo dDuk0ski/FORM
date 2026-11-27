@@ -33,3 +33,11 @@ export function localDayRangeUtc(date: IsoDate): { start: IsoDateTime; end: IsoD
     end: new Date(year, month - 1, day + 1).toISOString(),
   };
 }
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** The device's local day for a screen header, e.g. "Saturday, Oct 31". */
+export function formatDayHeading(now: Date = new Date()): string {
+  return `${WEEKDAYS[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}`;
+}

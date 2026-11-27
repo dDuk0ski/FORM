@@ -1,12 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, EmptyState, ErrorState, LoadingState, Screen } from '@/components';
-import { DataSourceNotice, FoodLogForm } from '@/components/food';
+import { Button, EmptyState, ErrorState, LoadingState } from '@/components';
+import { DataSourceNotice, FoodLogForm, FoodSheetScreen } from '@/components/food';
 import { useFood } from '@/hooks/useFoodSearch';
 import { errorMessage } from '@/lib/errors';
-import { useTheme } from '@/theme';
 import type { LogSource } from '@/types/food';
 
 // Pick a serving and amount for one food, then add it to today's log.
@@ -18,11 +15,9 @@ export default function FoodDetailModal() {
   const id = typeof params.id === 'string' ? params.id : undefined;
   const source: LogSource | undefined = params.source === 'barcode' ? 'barcode' : undefined;
   const food = useFood(id);
-  const { spacing } = useTheme();
-  const insets = useSafeAreaInsets();
 
   return (
-    <Screen title="Add food" edges={[]}>
+    <FoodSheetScreen title="Add food" tint="headerAddFood" onBack={() => router.back()}>
       <DataSourceNotice />
       {food.isLoading ? (
         <LoadingState label="Loading food…" />
@@ -40,10 +35,7 @@ export default function FoodDetailModal() {
           message="This food isn’t available. Go back and search again."
         />
       )}
-      {/* Keep the last button clear of the home indicator. */}
-      <View style={{ paddingBottom: Math.max(insets.bottom, spacing.lg) }}>
-        <Button title="Back to search" variant="softOutline" onPress={() => router.back()} />
-      </View>
-    </Screen>
+      <Button title="Back to search" variant="softOutline" onPress={() => router.back()} />
+    </FoodSheetScreen>
   );
 }

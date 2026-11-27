@@ -10,3 +10,6 @@ export { QuantityField } from './QuantityField';
 export { SearchResults } from './SearchResults';
 export { ServingSelector } from './ServingSelector';
 export { TodayNutrition } from './TodayNutrition';
+export { FoodSheetScreen } from './FoodSheetScreen';
+export { RoundBackButton } from './RoundBackButton';
+export { softShadow } from './softShadow';

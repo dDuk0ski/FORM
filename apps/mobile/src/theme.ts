@@ -38,6 +38,10 @@ const light = {
   headerRecipes: '#E5DDF3',
   headerProfile: '#DCC0DC',
   shadow: '#000000',
+
+  // Food screens (sampled from the "Log food" and "Add food" frames).
+  headerLogFood: '#DDF3DE',
+  headerAddFood: '#DDE5F3',
 };
 
 export type ColorTokens = typeof light;
@@ -77,6 +81,9 @@ const dark: ColorTokens = {
   headerRecipes: '#26222F',
   headerProfile: '#2E232E',
   shadow: '#000000',
+
+  headerLogFood: '#1E2D21',
+  headerAddFood: '#1F2533',
 };
 
 export const colors = { light, dark };

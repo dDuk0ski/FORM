@@ -12,6 +12,9 @@ export const scannerColors = {
   panel: dark.chipBorder,
   /** Mockup white title, brackets and labels → onPrimary (white). */
   onCamera: dark.onPrimary,
+  /** Round white back button with a dark chevron, as on the Log food / Add food frames. */
+  backButton: dark.onPrimary,
+  onBackButton: dark.stepperText,
   /** Mockup muted-green pill → success, the closest existing green. */
   caption: dark.success,
   /** Dark text on the green pill: white on `success` would fail WCAG AA contrast. */
