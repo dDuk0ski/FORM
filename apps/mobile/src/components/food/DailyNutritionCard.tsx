@@ -4,6 +4,7 @@ import { Card, ProgressBar } from '@/components';
 import {
   formatNutrientTotal,
   formatTotalAgainstTarget,
+  kcalSummary,
   targetProgress,
   type NutrientUnit,
 } from '@/lib/nutrition';
@@ -27,6 +28,8 @@ type DailyNutritionCardProps = {
   targets?: Macros | null;
   /** Small print under the card, e.g. where the targets came from. */
   targetsNote?: string | null;
+  /** The "X kcal left" headline. Off where the screen header already shows it. */
+  showHeadline?: boolean;
 };
 
 type MacroRowProps = {
@@ -80,13 +83,34 @@ function MacroProgressRow({ label, consumed, target, unit, tone }: MacroRowProps
 }
 
 /** Calories, protein, carbs and fat for the day, with progress toward targets when known. */
-export function DailyNutritionCard({ totals, targets, targetsNote }: DailyNutritionCardProps) {
+export function DailyNutritionCard({
+  totals,
+  targets,
+  targetsNote,
+  showHeadline = true,
+}: DailyNutritionCardProps) {
   const { colors, spacing, typography } = useTheme();
+  const summary = showHeadline ? kcalSummary(totals.kcal, targets?.kcal) : null;
   return (
     <Card variant="soft" style={{ gap: spacing.md }}>
       <Text accessibilityRole="header" style={[typography.heading, { color: colors.text }]}>
         Nutrition
       </Text>
+      {summary ? (
+        <View style={{ gap: spacing.xs / 2 }}>
+          <Text
+            accessibilityLabel={summary.headline.accessibilityLabel}
+            style={[typography.title, { color: colors.text, fontVariant: ['tabular-nums'] }]}
+          >
+            {summary.headline.text}
+          </Text>
+          <Text
+            style={[typography.label, { color: colors.textMuted, fontVariant: ['tabular-nums'] }]}
+          >
+            {summary.detail}
+          </Text>
+        </View>
+      ) : null}
       <MacroProgressRow
         label="Calories"
         consumed={totals.kcal}

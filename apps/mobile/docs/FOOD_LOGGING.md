@@ -18,6 +18,11 @@ React Native 0.88.1 / RNTL 14.
 2. Tap a result to open **Add food** (`/food-detail`). Pick a meal, choose the food's serving or
    **Custom grams**, enter or step the amount, see the scaled nutrition, and tap **Add to log**.
 3. Back in Log food, **Nutrition** and **Logged today** update immediately. Entries can be removed.
+   Log food is meal first: the header shows today's "X kcal left" and "Y eaten of Z · date", and
+   four rows (Breakfast, Lunch, Dinner, Snacks) show each meal's kcal today ("120 kcal+" when an
+   entry is unknown, "—" when all are, "0 kcal" only with no entries). A row's "+" opens
+   **Add food** search (`/food-search?meal=…`); food detail (also via its scanner) then opens with
+   that meal selected, still changeable. Search and Scan barcode also stay on Log food itself.
 4. Close and reopen the app: the log is still there (stored on this device only).
 
 Every screen handles loading, empty, no-results, invalid-input, success and error states.
@@ -39,11 +44,14 @@ that feeds the Fuel tile from the food totals is kept outside the repo until PR 
 ## How it is built
 
 ```
-src/app/(modals)/log-food.tsx        search screen
+src/app/(modals)/log-food.tsx        meal rows, kcal left, search, nutrition, logged today
+src/app/(modals)/food-search.tsx     search for one meal (opened by a meal row's "+")
 src/app/(modals)/food-detail.tsx     serving + amount + add
 src/components/food/                 FoodCard, MealPicker, ServingSelector, QuantityField, NutritionPreview,
                                      DailyNutritionCard, FoodLogList, SearchResults, FoodLogForm,
-                                     TodayNutrition, DataSourceNotice, MacroLine
+                                     TodayNutrition, DataSourceNotice, MacroLine, FoodSheetScreen,
+                                     RoundBackButton, FoodSearchField, TabbedRow, AddCircle,
+                                     foodTab (row tab color), softShadow, MealRow, LogFoodSummary
 src/components/                      + SearchInput, ProgressBar, StateViews (shared, exported from the barrel)
 src/hooks/                           useFoodSearch / useFood, useFoodLog (+ useLogFood, useRemoveLogEntry,
                                      useDailyNutrition), useDebouncedValue
@@ -57,6 +65,23 @@ src/types/food.ts                    provisional frontend types
 Rules followed: screens never call `fetch`, Supabase or AsyncStorage; colors come from the theme;
 grams internally; UTC timestamps; no `user_id` anywhere on the client. Daily totals are always
 the sum of the day's entries, never stored separately.
+
+## Look (Christian's "Log food", "Add food" and "scan screen" frames)
+
+- Log food and food detail use `FoodSheetScreen`: soft tinted top (`headerLogFood` green,
+  `headerAddFood` blue), centered title, round white back button (same close / back action;
+  still labelled "Close" on Log food), the device's local date, and content on a rounded white
+  sheet. Still presented as iOS modals.
+- Search is a grey filled pill with a search icon. "N results" shows above results only when
+  there are results.
+- Food rows (search results, Logged today, the food header on detail) are `TabbedRow`s: white
+  rounded panel over a colored left tab, soft shadow. Foods have no category, so the tab color
+  is one of four `foodTab*` tokens picked by a stable hash of the food id; it means nothing.
+  The "+" on a search row is part of the row's button (it opens food detail like the row).
+- The Nutrition card adds "X kcal left" / "Y eaten of Z" over the bars. With any unknown
+  calories it shows "120 kcal+ eaten" or "— eaten" and no "left" number.
+- System font (the frames use a geometric sans). Not in the frames on purpose: avatar, tab bar,
+  category chips (no category data), "Today's Log" card, dark mode.
 
 ## How a log entry is stored (matches the agreed `food_logs` design)
 
@@ -166,13 +191,14 @@ or a development build to show FORM's own permission text).
 ### Design
 
 Matches Christian's `scan screen` mockup: black camera area, white rounded corner brackets, a
-glowing green line across the middle (a slow pulse; static when Reduce Motion is on), a green
-caption pill, a back arrow, and a gray lower panel holding the typed field. Differences: the title
-is "Scan barcode" (mockup: "Add"), the caption is "Fit the barcode inside the frame" (mockup:
-receipt text), the tab bar and profile avatar are left out (it is a modal), the frame sits fully
-inside the camera area, the back arrow is white, and the pill text is dark for contrast. The
-scanner always uses the dark palette from `src/theme.ts`; no tokens were added (mapping in
-`src/components/scanner/scannerColors.ts`).
+thin glowing green line across the middle (a slow pulse; static when Reduce Motion is on), a
+muted-green caption pill, a round white back button, and a gray lower panel holding the typed
+field. Differences: the title is "Scan barcode" (mockup: "Add"), the caption is "Fit the barcode
+inside the frame" (mockup: receipt text), the tab bar and profile avatar are left out (it is a
+modal), the frame sits fully inside the camera area, and the pill text is dark: white on the
+frame's green is about 3.4:1, below the 4.5:1 WCAG AA minimum. The scanner always uses the dark
+palette from `src/theme.ts`; the pill and line use the `scanHint` and `scanLine` tokens (mapping
+in `src/components/scanner/scannerColors.ts`).
 
 ### Shared files changed for the scanner
 

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
@@ -6,6 +6,7 @@ import { Button } from '@/components';
 import { BarcodeScanner, scannerColors } from '@/components/scanner';
 import { useBarcodeLookup } from '@/hooks/useBarcodeLookup';
 import { errorMessage } from '@/lib/errors';
+import { parseMeal } from '@/lib/nutrition';
 import { useTheme } from '@/theme';
 
 // Scan (or type) a food barcode. Open with router.push('/scan-barcode') from Log food.
@@ -16,6 +17,8 @@ import { useTheme } from '@/theme';
 // Lookups go through barcodeService (src/api/barcode.ts): fake sample codes in mock mode;
 // in real mode the server lookup is not connected yet, which shows as an error here.
 export default function ScanBarcodeModal() {
+  // `meal` comes from the meal-first Log food's search; it is passed on to food detail.
+  const meal = parseMeal(useLocalSearchParams<{ meal?: string }>()?.meal);
   const lookup = useBarcodeLookup();
   const [lastCode, setLastCode] = useState<string | null>(null);
   const { spacing, typography } = useTheme();
@@ -25,7 +28,12 @@ export default function ScanBarcodeModal() {
     lookup.mutate(code, {
       onSuccess: (food) => {
         if (food) {
-          router.replace({ pathname: '/food-detail', params: { id: food.id, source: 'barcode' } });
+          router.replace({
+            pathname: '/food-detail',
+            params: meal
+              ? { id: food.id, source: 'barcode', meal }
+              : { id: food.id, source: 'barcode' },
+          });
         }
       },
     });

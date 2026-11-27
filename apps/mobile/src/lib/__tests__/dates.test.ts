@@ -1,6 +1,17 @@
-import { localDateOf, localDayRangeUtc, nowUtcIso, todayLocal } from '@/lib/dates';
+import {
+  formatDayHeading,
+  localDateOf,
+  localDayRangeUtc,
+  nowUtcIso,
+  todayLocal,
+} from '@/lib/dates';
 
 describe('dates', () => {
+  it('formats the local day for screen headers', () => {
+    expect(formatDayHeading(new Date(2026, 9, 31, 8, 0))).toBe('Saturday, Oct 31');
+    expect(formatDayHeading(new Date(2026, 0, 4, 23, 59))).toBe('Sunday, Jan 4');
+  });
+
   it('formats the local calendar day', () => {
     expect(todayLocal(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05');
     expect(todayLocal(new Date(2026, 11, 31, 0, 0))).toBe('2026-12-31');

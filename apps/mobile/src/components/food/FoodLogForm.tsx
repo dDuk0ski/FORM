@@ -28,10 +28,12 @@ import {
 import { useTheme } from '@/theme';
 import type { Food, LogSource, MealType } from '@/types/food';
 
+import { foodTabToken } from './foodTab';
 import { MealPicker } from './MealPicker';
 import { NutritionPreview } from './NutritionPreview';
 import { QuantityField } from './QuantityField';
 import { ServingSelector } from './ServingSelector';
+import { TabbedRow } from './TabbedRow';
 
 const QUANTITY_STEP = 0.5;
 const GRAMS_STEP = 10;
@@ -41,13 +43,23 @@ const DEFAULT_CUSTOM_GRAMS = '100';
  * Choose a meal, a serving (or custom grams) and an amount for one food, preview the scaled
  * nutrition, and add it to today's log. After a successful save the form is replaced by a
  * confirmation. `source` is how the food was found (e.g. 'barcode'); it defaults to 'manual'.
+ * `initialMeal` preselects a meal (from Log food's meal "+"); it can still be changed. Without
+ * it the meal is suggested from the time of day, as before.
  */
-export function FoodLogForm({ food, source }: { food: Food; source?: LogSource }) {
+export function FoodLogForm({
+  food,
+  source,
+  initialMeal,
+}: {
+  food: Food;
+  source?: LogSource;
+  initialMeal?: MealType;
+}) {
   const { colors, spacing, typography } = useTheme();
   const logFood = useLogFood();
   const [servingId, setServingId] = useState(() => defaultServing(food).id);
   const [quantityText, setQuantityText] = useState('1');
-  const [meal, setMeal] = useState<MealType>(() => defaultMeal());
+  const [meal, setMeal] = useState<MealType>(() => initialMeal ?? defaultMeal());
   // One id per form, so a retry after a failed save cannot create a duplicate entry.
   const [entryId] = useState(newEntryId);
 
@@ -123,15 +135,15 @@ export function FoodLogForm({ food, source }: { food: Food; source?: LogSource }
   }
 
   return (
-    <View style={{ gap: spacing.lg }}>
-      <View style={{ gap: spacing.xs / 2 }}>
+    <View style={{ gap: spacing.xl }}>
+      <TabbedRow tabColor={colors[foodTabToken(food.id)]}>
         <Text accessibilityRole="header" style={[typography.heading, { color: colors.text }]}>
           {food.name}
         </Text>
         {food.brand ? (
           <Text style={[typography.caption, { color: colors.textMuted }]}>{food.brand}</Text>
         ) : null}
-      </View>
+      </TabbedRow>
 
       <MealPicker
         selected={meal}
@@ -141,29 +153,36 @@ export function FoodLogForm({ food, source }: { food: Food; source?: LogSource }
         }}
       />
 
-      <ServingSelector
-        servings={servings}
-        selectedId={isCustom ? CUSTOM_SERVING_ID : serving.id}
-        onSelect={onSelectServing}
-      />
+      <View style={{ gap: spacing.xs }}>
+        <Text style={[typography.label, { color: colors.textMuted }]}>Serving</Text>
+        <ServingSelector
+          servings={servings}
+          selectedId={isCustom ? CUSTOM_SERVING_ID : serving.id}
+          onSelect={onSelectServing}
+        />
+      </View>
 
-      <QuantityField
-        label={isCustom ? 'Grams' : 'Servings'}
-        value={quantityText}
-        onChangeText={(text) => {
-          clearSaveError();
-          setQuantityText(text);
-        }}
-        onStep={onStep}
-        error={parsed.ok ? null : parsed.error}
-        decrementDisabled={amount !== null && amount <= (isCustom ? MIN_GRAMS : MIN_QUANTITY)}
-        incrementDisabled={amount !== null && amount >= (isCustom ? MAX_TOTAL_GRAMS : MAX_QUANTITY)}
-      />
-      {grams !== null ? (
-        <Text style={[typography.caption, { color: colors.textMuted }]}>
-          {formatGrams(grams)} g in total
-        </Text>
-      ) : null}
+      <View style={{ gap: spacing.sm }}>
+        <QuantityField
+          label={isCustom ? 'Grams' : 'Servings'}
+          value={quantityText}
+          onChangeText={(text) => {
+            clearSaveError();
+            setQuantityText(text);
+          }}
+          onStep={onStep}
+          error={parsed.ok ? null : parsed.error}
+          decrementDisabled={amount !== null && amount <= (isCustom ? MIN_GRAMS : MIN_QUANTITY)}
+          incrementDisabled={
+            amount !== null && amount >= (isCustom ? MAX_TOTAL_GRAMS : MAX_QUANTITY)
+          }
+        />
+        {grams !== null ? (
+          <Text style={[typography.caption, { color: colors.textMuted }]}>
+            {formatGrams(grams)} g in total
+          </Text>
+        ) : null}
+      </View>
 
       <NutritionPreview macros={preview} />
 

@@ -1,8 +1,9 @@
 import { colors } from '@/theme';
 
 // The scanner is a camera surface, which is dark in both light and dark mode, so it always
-// reads the DARK palette from src/theme.ts. No new tokens: each mockup color maps to the
-// closest existing dark token (see docs/FOOD_LOGGING.md, "Barcode scanning").
+// reads the DARK palette from src/theme.ts. The hint pill and scan line have their own tokens
+// (scanHint, scanLine, sampled from the frame); the rest map to the closest existing dark token
+// (see docs/FOOD_LOGGING.md, "Barcode scanning").
 const dark = colors.dark;
 
 export const scannerColors = {
@@ -12,12 +13,18 @@ export const scannerColors = {
   panel: dark.chipBorder,
   /** Mockup white title, brackets and labels → onPrimary (white). */
   onCamera: dark.onPrimary,
-  /** Mockup muted-green pill → success, the closest existing green. */
-  caption: dark.success,
-  /** Dark text on the green pill: white on `success` would fail WCAG AA contrast. */
+  /** Round white back button with a dark chevron, as on the Log food / Add food frames. */
+  backButton: dark.onPrimary,
+  onBackButton: dark.stepperText,
+  /** Mockup muted-green pill. */
+  caption: dark.scanHint,
+  /**
+   * Dark text on the green pill: about 5.3:1. White on scanHint is about 3.4:1, below WCAG AA
+   * (4.5:1) for this text size, so the frame's white text is not used.
+   */
   onCaption: dark.stepperText,
-  /** Mockup light-green scan line → link, the closest existing bright green. */
-  scanLine: dark.link,
+  /** Mockup thin light-green scan line. */
+  scanLine: dark.scanLine,
   field: dark.surface,
   fieldText: dark.text,
   fieldBorder: dark.textMuted,

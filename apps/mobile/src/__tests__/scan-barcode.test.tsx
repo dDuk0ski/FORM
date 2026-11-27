@@ -168,3 +168,29 @@ describe('Food detail: log source', () => {
     expect(entries.map((entry) => entry.source)).toEqual(['manual']);
   });
 });
+
+describe('Meal from Log food', () => {
+  it('passes the meal on to food detail for a found code', async () => {
+    jest.mocked(useLocalSearchParams).mockReturnValue({ meal: 'dinner' } as never);
+    await setup();
+    await typeCode(BANANA_CODE);
+    await waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith({
+        pathname: '/food-detail',
+        params: { id: 'f_0455', source: 'barcode', meal: 'dinner' },
+      }),
+    );
+  });
+
+  it('saves the preselected meal unless it is changed', async () => {
+    jest
+      .mocked(useLocalSearchParams)
+      .mockReturnValue({ id: 'f_0455', source: 'barcode', meal: 'dinner' } as never);
+    const { wrapper } = createTestWrapper();
+    await render(<FoodDetailModal />, { wrapper });
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add to log' }));
+    expect(await screen.findByText('Added to your log')).toBeOnTheScreen();
+    const entries = await foodService.listLogEntries(localDateOf(nowUtcIso()));
+    expect(entries.map((entry) => [entry.meal, entry.source])).toEqual([['dinner', 'barcode']]);
+  });
+});

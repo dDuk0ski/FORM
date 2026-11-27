@@ -1,5 +1,6 @@
 import type { IsoDateTime } from '@/types/api';
 import { localDateOf } from '@/lib/dates';
+import { MEAL_TYPES } from '@/types/food';
 import type {
   Food,
   FoodLogEntry,
@@ -220,6 +221,100 @@ export function formatTotalAgainstTarget(
     text: `${amount} / ${goal} ${unit}`,
     accessibilityLabel: `${consumed.accessibilityLabel}, target ${goal} ${unitWord(unit)}`,
   };
+}
+
+/** One meal's calories for the day: how many entries it has, and their kcal total. */
+export interface MealKcal {
+  entries: number;
+  kcal: NutrientTotal;
+}
+
+/**
+ * Calories per meal, summed from the day's entries the same way as the daily totals: known
+ * values only, flagged as partial when any entry's calories were unknown. A meal with no
+ * entries has `entries: 0` (and a total of 0); unknown is never turned into 0.
+ */
+export function mealKcalTotals(entries: readonly FoodLogEntry[]): Record<MealType, MealKcal> {
+  const byMeal = (meal: MealType) => {
+    const items = entries.filter((entry) => entry.meal === meal);
+    return { entries: items.length, kcal: sumMacros(items.map((entry) => entry.nutrients)).kcal };
+  };
+  return {
+    breakfast: byMeal('breakfast'),
+    lunch: byMeal('lunch'),
+    dinner: byMeal('dinner'),
+    snack: byMeal('snack'),
+  };
+}
+
+/** "0 kcal" for a meal with no entries, "420 kcal", "120 kcal+" (partial) or "—" (unknown). */
+export function formatMealKcal(meal: MealKcal): NutrientDisplay {
+  if (meal.entries === 0) {
+    return { text: '0 kcal', accessibilityLabel: 'nothing logged' };
+  }
+  return formatNutrientTotal(meal.kcal, 'kcal');
+}
+
+/** Parse a route param into a meal, or undefined when it is missing or not a meal. */
+export function parseMeal(value: unknown): MealType | undefined {
+  return typeof value === 'string' && (MEAL_TYPES as readonly string[]).includes(value)
+    ? (value as MealType)
+    : undefined;
+}
+
+/** Whole calories with thousands separators, for headlines: 2680 -> "2,680". */
+export function formatKcalGrouped(value: number): string {
+  return formatKcal(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/** The calorie headline over the nutrition bars, e.g. "1,075 kcal left" / "1,605 eaten of 2,680". */
+export interface KcalSummary {
+  headline: NutrientDisplay;
+  detail: string;
+}
+
+/**
+ * "X kcal left" and "Y eaten of Z" from the day's calorie total and target. A "left" number
+ * is only given when every entry's calories are known; a partial total shows "120 kcal+
+ * eaten" and an unknown one "— eaten" instead, so unknown is never counted as 0. Null when
+ * there is no usable target.
+ */
+export function kcalSummary(
+  total: NutrientTotal,
+  target: number | undefined | null,
+): KcalSummary | null {
+  if (target === undefined || target === null || !(target > 0)) {
+    return null;
+  }
+  const goal = formatKcalGrouped(target);
+  if (total.value === null) {
+    return {
+      headline: { text: `${UNKNOWN_TEXT} eaten`, accessibilityLabel: 'calories eaten unknown' },
+      detail: `of ${goal} · calories unknown`,
+    };
+  }
+  const eaten = formatKcalGrouped(total.value);
+  if (total.hasUnknown) {
+    return {
+      headline: {
+        text: `${eaten} kcal+ eaten`,
+        accessibilityLabel: `at least ${eaten} calories eaten, some entries unknown`,
+      },
+      detail: `of ${goal} · some calories unknown`,
+    };
+  }
+  const remaining = Math.round(target) - Math.round(total.value);
+  const headline =
+    remaining >= 0
+      ? {
+          text: `${formatKcalGrouped(remaining)} kcal left`,
+          accessibilityLabel: `${formatKcalGrouped(remaining)} calories left`,
+        }
+      : {
+          text: `${formatKcalGrouped(-remaining)} kcal over`,
+          accessibilityLabel: `${formatKcalGrouped(-remaining)} calories over target`,
+        };
+  return { headline, detail: `${eaten} eaten of ${goal}` };
 }
 
 /** Fraction of the target reached (may exceed 1), or null when there is no usable target. */

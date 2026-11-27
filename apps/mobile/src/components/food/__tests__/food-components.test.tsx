@@ -5,7 +5,9 @@ import { View } from 'react-native';
 
 import { foodService } from '@/api/foods';
 import { DailyNutritionCard } from '@/components/food/DailyNutritionCard';
+import { FoodCard } from '@/components/food/FoodCard';
 import { FoodLogForm } from '@/components/food/FoodLogForm';
+import { foodTabToken } from '@/components/food/foodTab';
 import { FoodLogList } from '@/components/food/FoodLogList';
 import { SearchResults } from '@/components/food/SearchResults';
 import { TodayNutrition } from '@/components/food/TodayNutrition';
@@ -13,7 +15,8 @@ import { todayLocal } from '@/lib/dates';
 import { buildCustomGramsLog, buildServingLog, hydrateLogEntry, sumMacros } from '@/lib/nutrition';
 import { foodsFixture } from '@/mocks/foods';
 import { createWrapper } from '@/test-utils/providers';
-import type { Food } from '@/types/food';
+import { colors } from '@/theme';
+import type { Food, FoodLogEntry } from '@/types/food';
 
 const banana = foodsFixture.find((food) => food.id === 'f_0455')!;
 
@@ -43,6 +46,20 @@ describe('SearchResults', () => {
     expect(screen.getByText('105 kcal')).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: /Banana, raw/ }));
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'f_0455' }));
+  });
+
+  it('counts the results returned, and shows no count without results', async () => {
+    const expected = (await foodService.searchFoods('banana')).length;
+    const { rerender } = await renderWithProviders(
+      <SearchResults query="banana" onSelect={jest.fn()} />,
+    );
+    expect(
+      await screen.findByText(expected === 1 ? '1 result' : `${expected} results`),
+    ).toBeOnTheScreen();
+
+    await rerender(<SearchResults query="zzzz" onSelect={jest.fn()} />);
+    expect(await screen.findByText('No foods found')).toBeOnTheScreen();
+    expect(screen.queryByText(/^\d+ results?$/)).toBeNull();
   });
 
   it('says so when nothing matches', async () => {
@@ -184,6 +201,36 @@ describe('FoodLogForm', () => {
   });
 });
 
+describe('FoodCard', () => {
+  it('shows serving, kcal and protein from the data', async () => {
+    await renderWithProviders(<FoodCard food={banana} onPress={jest.fn()} />);
+    expect(screen.getByText('1 medium (118 g) · 105 kcal · 1.3 g protein')).toBeOnTheScreen();
+  });
+
+  it('shows a dash, never 0, for unknown kcal and protein', async () => {
+    const mystery: Food = {
+      id: 'f_test_unknown',
+      name: 'Food with unknown values',
+      brand: null,
+      macros_per_100g: { kcal: null, protein_g: null, carb_g: 20, fat_g: 1 },
+      servings: [{ id: '100g', label: '100 g', grams: 100 }],
+    };
+    const onPress = jest.fn();
+    await renderWithProviders(<FoodCard food={mystery} onPress={onPress} />);
+    expect(screen.getByText('100 g · — · — protein')).toBeOnTheScreen();
+    expect(screen.queryByText(/0 kcal/)).toBeNull();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Food with unknown values, calories unknown per 100 g' }),
+    );
+    expect(onPress).toHaveBeenCalledWith(mystery);
+  });
+
+  it('picks the same tab color for the same food every time', () => {
+    expect(foodTabToken('f_0455')).toBe(foodTabToken('f_0455'));
+    expect(foodTabToken('f_0455')).toMatch(/^foodTab/);
+  });
+});
+
 describe('DailyNutritionCard', () => {
   const totals = sumMacros([{ kcal: 105, protein_g: 1.3, carb_g: 26.9, fat_g: 0.4 }]);
   const targets = { kcal: 2680, protein_g: 175, carb_g: 300, fat_g: 85 };
@@ -197,6 +244,22 @@ describe('DailyNutritionCard', () => {
       max: 100,
       now: 4,
     });
+  });
+
+  it('adds a kcal left headline over the bars', async () => {
+    await renderWithProviders(<DailyNutritionCard totals={totals} targets={targets} />);
+    expect(screen.getByText('2,575 kcal left')).toBeOnTheScreen();
+    expect(screen.getByText('105 eaten of 2,680')).toBeOnTheScreen();
+  });
+
+  it('shows no kcal left number when calories are partly unknown', async () => {
+    const partial = sumMacros([
+      { kcal: 105, protein_g: 1, carb_g: 1, fat_g: 1 },
+      { kcal: null, protein_g: 1, carb_g: 1, fat_g: 1 },
+    ]);
+    await renderWithProviders(<DailyNutritionCard totals={partial} targets={targets} />);
+    expect(screen.getByText('105 kcal+ eaten')).toBeOnTheScreen();
+    expect(screen.queryByText(/kcal left/)).toBeNull();
   });
 
   it('shows totals only, with no progress bars, when there are no targets', async () => {
@@ -319,5 +382,42 @@ describe('FoodLogList', () => {
     expect(screen.getByText('Carbs 40 g')).toBeOnTheScreen();
     expect(screen.queryByText('Protein 0 g')).toBeNull();
     expect(screen.queryByText('0 kcal')).toBeNull();
+  });
+});
+
+describe('FoodLogList meal tabs', () => {
+  const logged = (id: string, meal: FoodLogEntry['meal']) =>
+    hydrateLogEntry(
+      buildCustomGramsLog({
+        id,
+        food: banana,
+        grams: 100,
+        loggedAt: '2026-10-16T12:00:00.000Z',
+        meal,
+      }),
+      banana,
+    );
+
+  it.each([
+    ['breakfast', 'mealBreakfast', 'sun.max'],
+    ['lunch', 'mealLunch', 'fork.knife'],
+    ['dinner', 'mealDinner', 'moon'],
+    ['snack', 'mealSnack', 'carrot'],
+  ] as const)('gives a %s entry its meal color and icon', async (meal, token, icon) => {
+    await renderWithProviders(<FoodLogList entries={[logged('le_m', meal)]} />);
+    expect(screen.getByTestId('logged-row-le_m')).toHaveStyle({
+      backgroundColor: colors.light[token],
+    });
+    const symbol = screen.getByTestId(`meal-icon-${meal}`, { includeHiddenElements: true });
+    expect(symbol.props.name).toBe(icon);
+  });
+
+  it('falls back to the hash color with no icon when an entry has no meal', async () => {
+    const noMeal = { ...logged('le_x', 'lunch'), meal: undefined } as unknown as FoodLogEntry;
+    await renderWithProviders(<FoodLogList entries={[noMeal]} />);
+    expect(screen.getByTestId('logged-row-le_x')).toHaveStyle({
+      backgroundColor: colors.light[foodTabToken(banana.id)],
+    });
+    expect(screen.queryByTestId(/^meal-icon-/, { includeHiddenElements: true })).toBeNull();
   });
 });

@@ -1,5 +1,4 @@
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   AccessibilityInfo,
@@ -8,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -16,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { ROUND_BUTTON_SIZE, RoundBackButton } from '@/components/food/RoundBackButton';
 import { useTheme } from '@/theme';
 
 import { BarcodeEntry } from './BarcodeEntry';
@@ -25,7 +24,7 @@ import { scannerColors } from './scannerColors';
 // Reusable barcode scanner: camera with a framing guide, plus a typed-entry fallback. It
 // knows nothing about food; it only reports a valid code through onScanned. Styled after
 // Christian's "scan screen" mockup (black camera area, white corner brackets, green scan
-// line, green caption pill, back arrow, gray lower panel). The mockup's tab bar and profile
+// line, green caption pill, round white back button, gray lower panel). The mockup's tab bar and profile
 // avatar are left out on purpose: this is a modal.
 
 export const BARCODE_TYPES = ['ean13', 'ean8', 'upc_a', 'upc_e'] as const;
@@ -92,15 +91,15 @@ function ScanLine({ reduceMotion }: { reduceMotion: boolean }) {
       testID={reduceMotion ? 'scan-line-static' : 'scan-line-animated'}
       style={{
         position: 'absolute',
-        left: 0,
-        right: 0,
+        left: BRACKET_WIDTH,
+        right: BRACKET_WIDTH,
         top: '50%',
-        height: 3,
-        borderRadius: 2,
+        height: 2,
+        borderRadius: 1,
         backgroundColor: scannerColors.scanLine,
         shadowColor: scannerColors.scanLine,
         shadowOpacity: 0.9,
-        shadowRadius: 8,
+        shadowRadius: 6,
         shadowOffset: { width: 0, height: 0 },
         elevation: 6,
         opacity,
@@ -310,15 +309,11 @@ export function BarcodeScanner({
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            hitSlop={spacing.sm}
+          <RoundBackButton
             onPress={onBack}
-            style={{ width: 44, height: 44, justifyContent: 'center' }}
-          >
-            <SymbolView name="chevron.left" tintColor={scannerColors.onCamera} size={22} />
-          </Pressable>
+            fill={scannerColors.backButton}
+            iconColor={scannerColors.onBackButton}
+          />
           <Text
             accessibilityRole="header"
             style={[
@@ -328,7 +323,7 @@ export function BarcodeScanner({
           >
             {title}
           </Text>
-          <View style={{ width: 44 }} />
+          <View style={{ width: ROUND_BUTTON_SIZE }} />
         </View>
         <View
           style={{

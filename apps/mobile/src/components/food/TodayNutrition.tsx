@@ -18,7 +18,14 @@ import { FoodLogList } from './FoodLogList';
  *
  * Drop this into the Today tab, or any screen that should show the day's nutrition.
  */
-export function TodayNutrition({ date }: { date?: IsoDate }) {
+export function TodayNutrition({
+  date,
+  showHeadline = true,
+}: {
+  date?: IsoDate;
+  /** Passed to the Nutrition card; off where the screen header shows "kcal left". */
+  showHeadline?: boolean;
+}) {
   const { colors, typography } = useTheme();
   const day = date ?? todayLocal();
   const { entries, totals, isLoading, isError, error, refetch } = useDailyNutrition(day);
@@ -49,7 +56,12 @@ export function TodayNutrition({ date }: { date?: IsoDate }) {
 
   return (
     <>
-      <DailyNutritionCard totals={totals} targets={targets} targetsNote={targetsNote} />
+      <DailyNutritionCard
+        totals={totals}
+        targets={targets}
+        targetsNote={targetsNote}
+        showHeadline={showHeadline}
+      />
       <FoodLogList
         entries={entries}
         onRemove={(entryId) => remove.mutate(entryId)}

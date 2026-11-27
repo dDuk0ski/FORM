@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { EmptyState, ErrorState, LoadingState } from '@/components';
 import { useFoodSearch } from '@/hooks/useFoodSearch';
@@ -17,7 +17,7 @@ type SearchResultsProps = {
 
 /** Search results with every state: too short, loading, error, no matches, and matches. */
 export function SearchResults({ query, onSelect }: SearchResultsProps) {
-  const { spacing } = useTheme();
+  const { colors, spacing, typography } = useTheme();
   const search = useFoodSearch(query);
   const normalized = normalizeQuery(query);
 
@@ -53,6 +53,12 @@ export function SearchResults({ query, onSelect }: SearchResultsProps) {
   }
   return (
     <View style={{ gap: spacing.md }}>
+      <Text
+        accessibilityLiveRegion="polite"
+        style={[typography.label, { color: colors.textMuted, textAlign: 'right' }]}
+      >
+        {foods.length === 1 ? '1 result' : `${foods.length} results`}
+      </Text>
       {foods.map((food) => (
         <FoodCard key={food.id} food={food} onPress={onSelect} />
       ))}
