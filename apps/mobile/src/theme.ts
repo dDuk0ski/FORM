@@ -48,6 +48,10 @@ const light = {
   foodTabBlush: '#E18C8E',
   foodTabSage: '#91B18C',
   foodTabKhaki: '#B1A88C',
+  // Scanner (from the "scan screen" frame). The camera is dark in both schemes, so the
+  // dark palette below repeats these values.
+  scanHint: '#65995D',
+  scanLine: '#8AD48E',
 };
 
 export type ColorTokens = typeof light;
@@ -94,6 +98,8 @@ const dark: ColorTokens = {
   foodTabBlush: '#A86668',
   foodTabSage: '#5F7A5B',
   foodTabKhaki: '#7D7660',
+  scanHint: '#65995D',
+  scanLine: '#8AD48E',
 };
 
 export const colors = { light, dark };

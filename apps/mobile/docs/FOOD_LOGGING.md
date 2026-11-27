@@ -166,13 +166,14 @@ or a development build to show FORM's own permission text).
 ### Design
 
 Matches Christian's `scan screen` mockup: black camera area, white rounded corner brackets, a
-glowing green line across the middle (a slow pulse; static when Reduce Motion is on), a green
-caption pill, a back arrow, and a gray lower panel holding the typed field. Differences: the title
-is "Scan barcode" (mockup: "Add"), the caption is "Fit the barcode inside the frame" (mockup:
-receipt text), the tab bar and profile avatar are left out (it is a modal), the frame sits fully
-inside the camera area, the back arrow is white, and the pill text is dark for contrast. The
-scanner always uses the dark palette from `src/theme.ts`; no tokens were added (mapping in
-`src/components/scanner/scannerColors.ts`).
+thin glowing green line across the middle (a slow pulse; static when Reduce Motion is on), a
+muted-green caption pill, a round white back button, and a gray lower panel holding the typed
+field. Differences: the title is "Scan barcode" (mockup: "Add"), the caption is "Fit the barcode
+inside the frame" (mockup: receipt text), the tab bar and profile avatar are left out (it is a
+modal), the frame sits fully inside the camera area, and the pill text is dark: white on the
+frame's green is about 3.4:1, below the 4.5:1 WCAG AA minimum. The scanner always uses the dark
+palette from `src/theme.ts`; the pill and line use the `scanHint` and `scanLine` tokens (mapping
+in `src/components/scanner/scannerColors.ts`).
 
 ### Shared files changed for the scanner
 
