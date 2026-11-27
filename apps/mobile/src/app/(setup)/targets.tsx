@@ -447,7 +447,12 @@ export default function SetupTargetsScreen() {
                 </View>
 
                 {/* bottom block */}
-                <View style={{ width: '95%', alignSelf: 'center' }}>
+                <View style={{ width: '95%', alignSelf: 'center', gap: spacing.sm }}>
+                    {completeOnboarding.isError ? (
+                        <Text accessibilityRole="alert" style={[typography.caption, { color: colors.danger, textAlign: 'center' }]}>
+                            {completeOnboarding.error.message}
+                        </Text>
+                    ) : null}
                     <Button
                         title="Continue"
                         onPress={handleContinue}

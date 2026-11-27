@@ -11,12 +11,13 @@ import { useTheme } from '@/theme';
 function RootNavigator() {
   const { colors } = useTheme();
   const { data: session, isPending: sessionPending } = useSession();
-  const { data: isOnboarded, isPending: onboardingPending } = useOnboardingStatus();
+  const { data: isOnboarded, isPending: onboardingPending } = useOnboardingStatus(session?.user.id);
+  const isSignedIn = session != null;
 
   // wait for both lookups, otherwise a returning user could see the wrong group for a frame
-  if (sessionPending || onboardingPending) return null;
+  // (onboarding only loads once someone is signed in)
+  if (sessionPending || (isSignedIn && onboardingPending)) return null;
 
-  const isSignedIn = session != null;
   const isOnboardedFlag = isOnboarded === true;
   const needsSetup = isSignedIn && !isOnboardedFlag;
   const isReady = isSignedIn && isOnboardedFlag;
