@@ -6,14 +6,13 @@ import { useTheme } from '@/theme';
 type FoodSearchFieldProps = {
   value: string;
   onChangeText: (text: string) => void;
-  autoFocus?: boolean;
 };
 
 /**
  * The "Add food" frame's search field: a grey filled pill with a search icon on the left.
- * The clear (x) button is the iOS one, shown while editing.
+ * The clear (x) button is the iOS one, shown while editing. It never takes focus on its own.
  */
-export function FoodSearchField({ value, onChangeText, autoFocus = false }: FoodSearchFieldProps) {
+export function FoodSearchField({ value, onChangeText }: FoodSearchFieldProps) {
   const { colors, spacing, radii, typography } = useTheme();
   return (
     <View
@@ -38,7 +37,8 @@ export function FoodSearchField({ value, onChangeText, autoFocus = false }: Food
         onChangeText={onChangeText}
         placeholder="Search foods"
         placeholderTextColor={colors.textMuted}
-        autoFocus={autoFocus}
+        // Never focus on open: the keyboard would cover the meal rows. A tap focuses it.
+        autoFocus={false}
         autoCorrect={false}
         autoCapitalize="none"
         returnKeyType="search"

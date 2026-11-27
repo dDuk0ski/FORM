@@ -65,6 +65,15 @@ describe('Log food modal', () => {
     });
   });
 
+  it('does not focus the search field on open, and it still searches when used', async () => {
+    const { wrapper } = createWrapper();
+    await render(<LogFoodModal />, { wrapper });
+    const field = screen.getByLabelText('Search foods');
+    expect(field.props.autoFocus).toBe(false);
+    await fireEvent.changeText(field, 'banana');
+    expect(await screen.findByRole('button', { name: /Banana, raw/ })).toBeOnTheScreen();
+  });
+
   it('shows today as empty before anything is logged, and closes', async () => {
     const { wrapper } = createWrapper();
     await render(<LogFoodModal />, { wrapper });
