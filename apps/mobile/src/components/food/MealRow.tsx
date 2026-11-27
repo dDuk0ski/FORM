@@ -1,11 +1,12 @@
-import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { SymbolView } from 'expo-symbols';
 import { Text } from 'react-native';
 
 import { formatMealKcal, type MealKcal } from '@/lib/nutrition';
-import { useTheme, type ColorTokens } from '@/theme';
+import { useTheme } from '@/theme';
 import type { MealType } from '@/types/food';
 
 import { AddCircle } from './AddCircle';
+import { MEAL_ICON, MEAL_TAB } from './mealStyle';
 import { TabbedRow } from './TabbedRow';
 
 /** Labels on the meal-first Log food screen. The stored value stays `snack`. */
@@ -14,22 +15,6 @@ export const MEAL_ROW_LABELS: Record<MealType, string> = {
   lunch: 'Lunch',
   dinner: 'Dinner',
   snack: 'Snacks',
-};
-
-const MEAL_TAB: Record<MealType, keyof ColorTokens> = {
-  breakfast: 'mealBreakfast',
-  lunch: 'mealLunch',
-  dinner: 'mealDinner',
-  snack: 'mealSnack',
-};
-
-// SF Symbols (expo-symbols is already installed; @expo/vector-icons is not). The frame's bowl
-// and apple have no SF Symbol, so lunch and snacks use the closest ones.
-const MEAL_ICON: Record<MealType, SFSymbol> = {
-  breakfast: 'sun.max',
-  lunch: 'fork.knife',
-  dinner: 'moon',
-  snack: 'carrot',
 };
 
 type MealRowProps = {

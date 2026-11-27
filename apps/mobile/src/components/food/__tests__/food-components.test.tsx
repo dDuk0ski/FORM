@@ -15,7 +15,8 @@ import { todayLocal } from '@/lib/dates';
 import { buildCustomGramsLog, buildServingLog, hydrateLogEntry, sumMacros } from '@/lib/nutrition';
 import { foodsFixture } from '@/mocks/foods';
 import { createWrapper } from '@/test-utils/providers';
-import type { Food } from '@/types/food';
+import { colors } from '@/theme';
+import type { Food, FoodLogEntry } from '@/types/food';
 
 const banana = foodsFixture.find((food) => food.id === 'f_0455')!;
 
@@ -381,5 +382,42 @@ describe('FoodLogList', () => {
     expect(screen.getByText('Carbs 40 g')).toBeOnTheScreen();
     expect(screen.queryByText('Protein 0 g')).toBeNull();
     expect(screen.queryByText('0 kcal')).toBeNull();
+  });
+});
+
+describe('FoodLogList meal tabs', () => {
+  const logged = (id: string, meal: FoodLogEntry['meal']) =>
+    hydrateLogEntry(
+      buildCustomGramsLog({
+        id,
+        food: banana,
+        grams: 100,
+        loggedAt: '2026-10-16T12:00:00.000Z',
+        meal,
+      }),
+      banana,
+    );
+
+  it.each([
+    ['breakfast', 'mealBreakfast', 'sun.max'],
+    ['lunch', 'mealLunch', 'fork.knife'],
+    ['dinner', 'mealDinner', 'moon'],
+    ['snack', 'mealSnack', 'carrot'],
+  ] as const)('gives a %s entry its meal color and icon', async (meal, token, icon) => {
+    await renderWithProviders(<FoodLogList entries={[logged('le_m', meal)]} />);
+    expect(screen.getByTestId('logged-row-le_m')).toHaveStyle({
+      backgroundColor: colors.light[token],
+    });
+    const symbol = screen.getByTestId(`meal-icon-${meal}`, { includeHiddenElements: true });
+    expect(symbol.props.name).toBe(icon);
+  });
+
+  it('falls back to the hash color with no icon when an entry has no meal', async () => {
+    const noMeal = { ...logged('le_x', 'lunch'), meal: undefined } as unknown as FoodLogEntry;
+    await renderWithProviders(<FoodLogList entries={[noMeal]} />);
+    expect(screen.getByTestId('logged-row-le_x')).toHaveStyle({
+      backgroundColor: colors.light[foodTabToken(banana.id)],
+    });
+    expect(screen.queryByTestId(/^meal-icon-/, { includeHiddenElements: true })).toBeNull();
   });
 });

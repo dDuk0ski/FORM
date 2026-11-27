@@ -16,13 +16,17 @@ type TabbedRowProps = {
   children: ReactNode;
   /** Right-hand content, e.g. the round "+" or a Remove link. */
   accessory?: ReactNode;
+  testID?: string;
 };
 
 /** The frames' row: a rounded white card over a colored left tab, with a soft shadow. */
-export function TabbedRow({ tabColor, tab, children, accessory }: TabbedRowProps) {
+export function TabbedRow({ tabColor, tab, children, accessory, testID }: TabbedRowProps) {
   const { colors, spacing, radii } = useTheme();
   return (
-    <View style={[{ borderRadius: radii.xlSoft, backgroundColor: tabColor }, softShadow(colors)]}>
+    <View
+      testID={testID}
+      style={[{ borderRadius: radii.xlSoft, backgroundColor: tabColor }, softShadow(colors)]}
+    >
       <View style={{ flexDirection: 'row', borderRadius: radii.xlSoft, overflow: 'hidden' }}>
         <View
           style={{ width: ROW_TAB_WIDTH, alignItems: 'center', justifyContent: 'center' }}

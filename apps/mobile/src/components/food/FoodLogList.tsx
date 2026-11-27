@@ -1,11 +1,13 @@
+import { SymbolView } from 'expo-symbols';
 import { Pressable, Text, View } from 'react-native';
 
-import { formatGrams, formatNutrient, formatQuantity } from '@/lib/nutrition';
+import { formatGrams, formatNutrient, formatQuantity, parseMeal } from '@/lib/nutrition';
 import { useTheme } from '@/theme';
 import type { FoodLogEntry } from '@/types/food';
 
 import { foodTabToken } from './foodTab';
 import { MacroLine } from './MacroLine';
+import { MEAL_ICON, MEAL_TAB } from './mealStyle';
 import { TabbedRow } from './TabbedRow';
 
 type FoodLogListProps = {
@@ -31,10 +33,23 @@ export function FoodLogList({ entries, onRemove, removingId = null }: FoodLogLis
       ) : (
         entries.map((entry) => {
           const kcal = formatNutrient(entry.nutrients.kcal, 'kcal');
+          // Stored rows should always have a meal; if one does not, keep the neutral hash color.
+          const meal = parseMeal(entry.meal);
           return (
             <TabbedRow
               key={entry.id}
-              tabColor={colors[foodTabToken(entry.food_id)]}
+              testID={`logged-row-${entry.id}`}
+              tabColor={colors[meal ? MEAL_TAB[meal] : foodTabToken(entry.food_id)]}
+              tab={
+                meal ? (
+                  <SymbolView
+                    testID={`meal-icon-${meal}`}
+                    name={MEAL_ICON[meal]}
+                    tintColor={colors.onPrimarySoft}
+                    size={22}
+                  />
+                ) : null
+              }
               accessory={
                 <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
                   <Text
