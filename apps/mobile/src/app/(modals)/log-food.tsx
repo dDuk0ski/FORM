@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 
-import { Button, SearchInput } from '@/components';
+import { Button } from '@/components';
 import {
   DataSourceNotice,
+  FoodSearchField,
   FoodSheetScreen,
   SearchResults,
   TodayNutrition,
@@ -33,19 +34,13 @@ export default function LogFoodModal() {
       tint="headerLogFood"
       onBack={() => router.back()}
       backLabel="Close"
+      top={<FoodSearchField value={query} onChangeText={setQuery} />}
     >
       <DataSourceNotice />
       <Button
         title="Scan barcode"
         variant="softOutline"
         onPress={() => router.push('/scan-barcode')}
-      />
-      <SearchInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search foods"
-        accessibilityLabel="Search foods"
-        variant="soft"
       />
       <SearchResults query={debouncedQuery} onSelect={openFood} />
       <TodayNutrition />

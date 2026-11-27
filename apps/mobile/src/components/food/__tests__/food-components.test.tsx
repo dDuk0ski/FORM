@@ -45,6 +45,20 @@ describe('SearchResults', () => {
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'f_0455' }));
   });
 
+  it('counts the results returned, and shows no count without results', async () => {
+    const expected = (await foodService.searchFoods('banana')).length;
+    const { rerender } = await renderWithProviders(
+      <SearchResults query="banana" onSelect={jest.fn()} />,
+    );
+    expect(
+      await screen.findByText(expected === 1 ? '1 result' : `${expected} results`),
+    ).toBeOnTheScreen();
+
+    await rerender(<SearchResults query="zzzz" onSelect={jest.fn()} />);
+    expect(await screen.findByText('No foods found')).toBeOnTheScreen();
+    expect(screen.queryByText(/^\d+ results?$/)).toBeNull();
+  });
+
   it('says so when nothing matches', async () => {
     await renderWithProviders(<SearchResults query="zzzz" onSelect={jest.fn()} />);
     expect(await screen.findByText('No foods found')).toBeOnTheScreen();
