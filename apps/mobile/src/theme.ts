@@ -42,6 +42,12 @@ const light = {
   // Food screens (sampled from the "Log food" and "Add food" frames).
   headerLogFood: '#DDF3DE',
   headerAddFood: '#DDE5F3',
+  // Left tab colors for food rows. Foods have no category, so a row picks one by a stable
+  // hash of its id; the colors carry no meaning.
+  foodTabRose: '#D76668',
+  foodTabBlush: '#E18C8E',
+  foodTabSage: '#91B18C',
+  foodTabKhaki: '#B1A88C',
 };
 
 export type ColorTokens = typeof light;
@@ -84,6 +90,10 @@ const dark: ColorTokens = {
 
   headerLogFood: '#1E2D21',
   headerAddFood: '#1F2533',
+  foodTabRose: '#9E4A4C',
+  foodTabBlush: '#A86668',
+  foodTabSage: '#5F7A5B',
+  foodTabKhaki: '#7D7660',
 };
 
 export const colors = { light, dark };

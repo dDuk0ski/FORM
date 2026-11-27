@@ -5,7 +5,9 @@ import { View } from 'react-native';
 
 import { foodService } from '@/api/foods';
 import { DailyNutritionCard } from '@/components/food/DailyNutritionCard';
+import { FoodCard } from '@/components/food/FoodCard';
 import { FoodLogForm } from '@/components/food/FoodLogForm';
+import { foodTabToken } from '@/components/food/foodTab';
 import { FoodLogList } from '@/components/food/FoodLogList';
 import { SearchResults } from '@/components/food/SearchResults';
 import { TodayNutrition } from '@/components/food/TodayNutrition';
@@ -195,6 +197,36 @@ describe('FoodLogForm', () => {
     await waitFor(async () =>
       expect(await foodService.listLogEntries(todayLocal())).toHaveLength(1),
     );
+  });
+});
+
+describe('FoodCard', () => {
+  it('shows serving, kcal and protein from the data', async () => {
+    await renderWithProviders(<FoodCard food={banana} onPress={jest.fn()} />);
+    expect(screen.getByText('1 medium (118 g) · 105 kcal · 1.3 g protein')).toBeOnTheScreen();
+  });
+
+  it('shows a dash, never 0, for unknown kcal and protein', async () => {
+    const mystery: Food = {
+      id: 'f_test_unknown',
+      name: 'Food with unknown values',
+      brand: null,
+      macros_per_100g: { kcal: null, protein_g: null, carb_g: 20, fat_g: 1 },
+      servings: [{ id: '100g', label: '100 g', grams: 100 }],
+    };
+    const onPress = jest.fn();
+    await renderWithProviders(<FoodCard food={mystery} onPress={onPress} />);
+    expect(screen.getByText('100 g · — · — protein')).toBeOnTheScreen();
+    expect(screen.queryByText(/0 kcal/)).toBeNull();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Food with unknown values, calories unknown per 100 g' }),
+    );
+    expect(onPress).toHaveBeenCalledWith(mystery);
+  });
+
+  it('picks the same tab color for the same food every time', () => {
+    expect(foodTabToken('f_0455')).toBe(foodTabToken('f_0455'));
+    expect(foodTabToken('f_0455')).toMatch(/^foodTab/);
   });
 });
 

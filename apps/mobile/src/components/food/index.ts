@@ -14,3 +14,5 @@ export { FoodSheetScreen } from './FoodSheetScreen';
 export { RoundBackButton } from './RoundBackButton';
 export { softShadow } from './softShadow';
 export { FoodSearchField } from './FoodSearchField';
+export { AddCircle } from './AddCircle';
+export { TabbedRow } from './TabbedRow';
