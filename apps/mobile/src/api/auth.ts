@@ -1,39 +1,10 @@
-import type { AuthSession, AuthUser, Credentials, VerifyEmailInput } from '@/types/auth';
+import type { AuthService } from '@/types/auth';
 
-// Mock auth service. Keeps the session in memory so it resets on app reload (you start signed out)
-// TODO(auth): replace each function body with supabase calls
+import { mockAuth } from './auth.mock';
+import { supabaseAuth } from './auth.supabase';
+import { env } from './env';
 
-let session: AuthSession | null = null;
-
-export const auth = {
-    async getSession(): Promise<AuthSession | null> {
-        return session;
-    },
-
-    async signUp(credentials: Credentials): Promise<AuthUser> {
-        return { id: `mock-${Date.now()}`, email: credentials.email }; // TEMP: datetime as unique id
-    },
-
-    // creates the account but does not sign the user in yet
-    async signIn(credentials: Credentials): Promise<AuthSession> {
-        // TEMP: any email works but a short password fails so errors can be tested
-        if (credentials.password.length < 8) throw new Error('Invalid email or password');
-        session = { user: { id: 'u1', email: credentials.email } };
-        return session;
-    },
-
-    async signOut(): Promise<void> {
-        session = null;
-    },
-
-    async verifyEmail(input: VerifyEmailInput): Promise<AuthSession> {
-        // TEMP: any 6 digit code works except 000000 so errors can be tested
-        if (input.code === '000000') throw new Error('Invalid or expired code');
-        session = { user: { id: 'u1', email: input.email } };
-        return session;
-    },
-
-    async resendCode(email: string): Promise<void> {
-        void email; // mock: nothing to send.
-    },
-};
+// Mock mode is the default (in-memory, any 6 digit code but 000000 works).
+// With EXPO_PUBLIC_USE_MOCKS=0 it uses Supabase Auth (auth.supabase.ts).
+// Hooks import `auth` and never need to know which one is running.
+export const auth: AuthService = env.useMocks ? mockAuth : supabaseAuth;
