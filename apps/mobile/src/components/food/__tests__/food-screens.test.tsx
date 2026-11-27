@@ -74,6 +74,35 @@ describe('Log food modal', () => {
     expect(await screen.findByRole('button', { name: /Banana, raw/ })).toBeOnTheScreen();
   });
 
+  it('shows no search hint until the person types, then the hint and results', async () => {
+    const { wrapper } = createWrapper();
+    await render(<LogFoodModal />, { wrapper });
+    expect(await screen.findByRole('header', { name: 'Logged today' })).toBeOnTheScreen();
+    expect(screen.queryByText('Search for a food')).toBeNull();
+    expect(screen.queryByText(/Enter at least 2 letters/)).toBeNull();
+
+    await fireEvent.changeText(screen.getByLabelText('Search foods'), 'b');
+    expect(await screen.findByText('Search for a food')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByLabelText('Search foods'), 'zzzz');
+    expect(await screen.findByText('No foods found')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByLabelText('Search foods'), '');
+    expect(screen.queryByText('No foods found')).toBeNull();
+    expect(screen.queryByText('Search for a food')).toBeNull();
+  });
+
+  it('puts Nutrition and Logged today right after Scan barcode when there is no query', async () => {
+    const { wrapper } = createWrapper();
+    await render(<LogFoodModal />, { wrapper });
+    await screen.findByRole('header', { name: 'Logged today' });
+    const order = (await screen.findAllByText(/^(Scan barcode|Nutrition|Search for a food)$/)).map(
+      (node) => node.props.children,
+    );
+    // In screen order: nothing from search between the button and the Nutrition card.
+    expect(order).toEqual(['Scan barcode', 'Nutrition']);
+  });
+
   it('shows today as empty before anything is logged, and closes', async () => {
     const { wrapper } = createWrapper();
     await render(<LogFoodModal />, { wrapper });

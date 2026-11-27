@@ -16,6 +16,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useDailyNutrition } from '@/hooks/useFoodLog';
 import { useToday } from '@/hooks/useToday';
 import { todayLocal } from '@/lib/dates';
+import { normalizeQuery } from '@/lib/foodSearch';
 import { mealKcalTotals } from '@/lib/nutrition';
 import { useTheme } from '@/theme';
 import { MEAL_TYPES, type Food, type MealType } from '@/types/food';
@@ -34,6 +35,8 @@ export default function LogFoodModal() {
   const { colors, typography } = useTheme();
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, 250);
+  // Both: hide at once when the field is cleared, show once the debounced text catches up.
+  const hasQuery = normalizeQuery(query).length > 0 && normalizeQuery(debouncedQuery).length > 0;
   const log = useDailyNutrition(todayLocal());
   const today = useToday();
   const loaded = !log.isLoading && !log.isError;
@@ -71,7 +74,9 @@ export default function LogFoodModal() {
         variant="softOutline"
         onPress={() => router.push('/scan-barcode')}
       />
-      <SearchResults query={debouncedQuery} onSelect={openFood} />
+      {/* No hint, loading or error while the field is empty: Nutrition and Logged today sit
+          right under Scan barcode until the person types. */}
+      {hasQuery ? <SearchResults query={debouncedQuery} onSelect={openFood} /> : null}
       <TodayNutrition showHeadline={false} />
     </FoodSheetScreen>
   );
