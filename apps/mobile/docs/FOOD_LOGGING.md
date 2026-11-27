@@ -43,7 +43,9 @@ src/app/(modals)/log-food.tsx        search screen
 src/app/(modals)/food-detail.tsx     serving + amount + add
 src/components/food/                 FoodCard, MealPicker, ServingSelector, QuantityField, NutritionPreview,
                                      DailyNutritionCard, FoodLogList, SearchResults, FoodLogForm,
-                                     TodayNutrition, DataSourceNotice, MacroLine
+                                     TodayNutrition, DataSourceNotice, MacroLine, FoodSheetScreen,
+                                     RoundBackButton, FoodSearchField, TabbedRow, AddCircle,
+                                     foodTab (row tab color), softShadow
 src/components/                      + SearchInput, ProgressBar, StateViews (shared, exported from the barrel)
 src/hooks/                           useFoodSearch / useFood, useFoodLog (+ useLogFood, useRemoveLogEntry,
                                      useDailyNutrition), useDebouncedValue
@@ -57,6 +59,23 @@ src/types/food.ts                    provisional frontend types
 Rules followed: screens never call `fetch`, Supabase or AsyncStorage; colors come from the theme;
 grams internally; UTC timestamps; no `user_id` anywhere on the client. Daily totals are always
 the sum of the day's entries, never stored separately.
+
+## Look (Christian's "Log food", "Add food" and "scan screen" frames)
+
+- Log food and food detail use `FoodSheetScreen`: soft tinted top (`headerLogFood` green,
+  `headerAddFood` blue), centered title, round white back button (same close / back action;
+  still labelled "Close" on Log food), the device's local date, and content on a rounded white
+  sheet. Still presented as iOS modals.
+- Search is a grey filled pill with a search icon. "N results" shows above results only when
+  there are results.
+- Food rows (search results, Logged today, the food header on detail) are `TabbedRow`s: white
+  rounded panel over a colored left tab, soft shadow. Foods have no category, so the tab color
+  is one of four `foodTab*` tokens picked by a stable hash of the food id; it means nothing.
+  The "+" on a search row is part of the row's button (it opens food detail like the row).
+- The Nutrition card adds "X kcal left" / "Y eaten of Z" over the bars. With any unknown
+  calories it shows "120 kcal+ eaten" or "— eaten" and no "left" number.
+- System font (the frames use a geometric sans). Not in the frames on purpose: avatar, tab bar,
+  category chips (no category data), "Today's Log" card, dark mode.
 
 ## How a log entry is stored (matches the agreed `food_logs` design)
 
