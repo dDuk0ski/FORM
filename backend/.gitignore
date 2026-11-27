@@ -3,3 +3,5 @@
 __pycache__/
 *.pyc
 get_token.py
+.venv312/
+services/
