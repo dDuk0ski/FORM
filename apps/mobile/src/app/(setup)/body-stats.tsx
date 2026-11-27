@@ -307,7 +307,12 @@ export default function SetupBodyStatsScreen() {
                 </View>
 
                 {/* bottom block */}
-                <View style={{ width: '95%', alignSelf: 'center' }}>
+                <View style={{ width: '95%', alignSelf: 'center', gap: spacing.sm }}>
+                    {saveStep.isError ? (
+                        <Text accessibilityRole="alert" style={[typography.caption, { color: colors.danger, textAlign: 'center' }]}>
+                            {saveStep.error.message}
+                        </Text>
+                    ) : null}
                     <Button title="Continue" onPress={handleContinue} disabled={saveStep.isPending} />
                 </View>
             </ScrollView>

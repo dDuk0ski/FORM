@@ -30,3 +30,10 @@ export type SetupData = {
     targets?: TargetsInput;
     timezone?: string;
 };
+
+// what both setup services (mock and Supabase) provide, so hooks don't care which one runs
+export type SetupService = {
+    get(): Promise<SetupData>;
+    /** Saves one step's slice and returns everything saved so far. */
+    saveStep(step: SetupData): Promise<SetupData>;
+};

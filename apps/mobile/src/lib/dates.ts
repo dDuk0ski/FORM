@@ -33,3 +33,8 @@ export function localDayRangeUtc(date: IsoDate): { start: IsoDateTime; end: IsoD
     end: new Date(year, month - 1, day + 1).toISOString(),
   };
 }
+
+/** The device's timezone as an IANA name like "America/New_York" (for profiles.timezone). UTC if unknown. */
+export function deviceTimezone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
+}

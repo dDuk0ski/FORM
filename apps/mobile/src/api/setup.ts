@@ -1,23 +1,10 @@
-import type { SetupData } from '@/types/setup';
+import type { SetupService } from '@/types/setup';
 
-// TODO(setup): replace with a Supabase profile read/write; the signatures stay the same
+import { env } from './env';
+import { mockSetup } from './setup.mock';
+import { supabaseSetup } from './setup.supabase';
 
-let setup: SetupData = {};
-
-// The device's timezone, for profiles.timezone. Falls back to UTC if the device doesn't report one
-function deviceTimezone(): string {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
-}
-
-export const setupApi = {
-    async get(): Promise<SetupData> {
-        return setup;
-    },
-
-    // Every step sends the timezone, so it's saved even if the user skips some steps.
-    // TODO(setup): goes into the profiles .update() alongside the step's fields
-    async saveStep(step: SetupData): Promise<SetupData> {
-        setup = { ...setup, ...step, timezone: deviceTimezone() };
-        return setup;
-    },
-};
+// Mock mode is the default (in memory). With EXPO_PUBLIC_USE_MOCKS=0 it saves to Supabase
+// (profiles + body_metrics, see setup.supabase.ts). Hooks import `setupApi` and never need
+// to know which one is running.
+export const setupApi: SetupService = env.useMocks ? mockSetup : supabaseSetup;
