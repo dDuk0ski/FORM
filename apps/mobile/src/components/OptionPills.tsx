@@ -23,7 +23,7 @@ export function OptionPills<T extends string>({
     <View
       accessibilityRole="radiogroup"
       accessibilityLabel={accessibilityLabel}
-      style={{ flexDirection: 'row', gap: spacing.sm }}
+      style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}
     >
       {options.map((option) => {
         const isSelected = option.value === selected;

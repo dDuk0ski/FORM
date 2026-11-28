@@ -6,6 +6,7 @@ export { Pill } from './Pill';
 export { ProgressBar } from './ProgressBar';
 export { Row } from './Row';
 export { Screen } from './Screen';
+export { SegmentedPill } from './SegmentedPill';
 export { SearchInput } from './SearchInput';
 export { EmptyState, ErrorState, LoadingState } from './StateViews';
 export { StatTile } from './StatTile';

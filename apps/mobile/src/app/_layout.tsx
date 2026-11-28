@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useOnboardingStatus } from '@/hooks/useOnboarding';
 
 import { useSession } from '@/hooks/useSession';
-import { useTheme } from '@/theme';
+import { radii, useTheme } from '@/theme';
 
 function RootNavigator() {
   const { colors } = useTheme();
@@ -32,6 +32,16 @@ function RootNavigator() {
       <Stack.Protected guard={isReady}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
+        <Stack.Screen
+          name="pantry-item"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: 'fitToContents',
+            sheetGrabberVisible: true,
+            sheetCornerRadius: radii.sheet,
+            contentStyle: { backgroundColor: colors.surface },
+          }}
+        />
       </Stack.Protected>
       <Stack.Protected guard={needsSetup}>
         <Stack.Screen name="(setup)" />

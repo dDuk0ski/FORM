@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
-import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, OptionPills, type PillOption } from '@/components';
 import { usePantry } from '@/hooks/usePantry';
+import { categoryIcon, daysUntil, formatAmount } from '@/lib/pantry';
 import { useTheme } from '@/theme';
 import type { PantryItem } from '@/types/pantry';
 
@@ -25,33 +26,6 @@ const CATEGORIES: PillOption<Category>[] = [
   { value: 'bakery', label: 'Bakery' },
 ];
 
-// TODO(Pantry): real food images once items link to foods
-const CATEGORY_ICONS: Record<string, SFSymbol> = {
-  produce: 'carrot.fill',
-  protein: 'fish.fill',
-  dairy: 'cup.and.saucer.fill',
-  bakery: 'birthday.cake.fill',
-};
-
-// days from today until a "YYYY-MM-DD" date. negative means already expired
-function daysUntil(date: string): number {
-  const ms = new Date(`${date}T00:00:00`).getTime() - Date.now();
-  return Math.ceil(ms / 86_400_000);
-}
-
-// 1 decimal max, no trailing .0
-function trim(n: number): string {
-  return String(Math.round(n * 10) / 10);
-}
-
-// short label for the badge: 500g, 1.5kg, 750ml, 1.5L, 12 (pcs/pack show just the number)
-function formatAmount(quantity: number, unit: string): string {
-  const u = unit.trim().toLowerCase();
-  if (u === 'g' || u === 'gram' || u === 'grams') return quantity >= 1000 ? `${trim(quantity / 1000)}kg` : `${trim(quantity)}g`;
-  if (u === 'ml') return quantity >= 1000 ? `${trim(quantity / 1000)}L` : `${trim(quantity)}ml`;
-  return quantity >= 1000 ? `${trim(quantity / 1000)}k` : trim(quantity);
-}
-
 // TODO(Pantry): placeholder, bar shows days until expiry out of 2 weeks
 function freshness(item: PantryItem): number {
   if (!item.expiration_date) return 1;
@@ -62,7 +36,6 @@ function PantryCard({ item }: { item: PantryItem }) {
   const { colors, spacing, radii, typography } = useTheme();
   const fill = freshness(item);
   const barColor = fill > 0.5 ? colors.progressGood : fill > 0.2 ? colors.progressWarning : colors.progressOver;
-  const icon = CATEGORY_ICONS[item.category ?? ''] ?? 'basket.fill';
 
   return (
     <Pressable
@@ -103,7 +76,7 @@ function PantryCard({ item }: { item: PantryItem }) {
       </View>
 
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xs }}>
-        <SymbolView name={icon} tintColor={colors.textMuted} size={36} />
+        <SymbolView name={categoryIcon(item.category)} tintColor={colors.textMuted} size={36} />
         <Text numberOfLines={1} style={[typography.label, { color: colors.text, fontWeight: '600' }]}>
           {item.name}
         </Text>
