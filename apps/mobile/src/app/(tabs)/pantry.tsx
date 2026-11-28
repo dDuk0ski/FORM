@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, OptionPills, type PillOption } from '@/components';
 import { usePantry } from '@/hooks/usePantry';
-import { categoryIcon, daysUntil, formatAmount } from '@/lib/pantry';
+import { categoryIcon, expiresInLabel, formatAmount, freshness, freshnessLevel } from '@/lib/pantry';
 import { useTheme } from '@/theme';
 import type { PantryItem } from '@/types/pantry';
 
@@ -26,16 +26,19 @@ const CATEGORIES: PillOption<Category>[] = [
   { value: 'bakery', label: 'Bakery' },
 ];
 
-// TODO(Pantry): placeholder, bar shows days until expiry out of 2 weeks
-function freshness(item: PantryItem): number {
-  if (!item.expiration_date) return 1;
-  return Math.min(1, Math.max(0, daysUntil(item.expiration_date) / 14));
-}
-
 function PantryCard({ item }: { item: PantryItem }) {
   const { colors, spacing, radii, typography } = useTheme();
-  const fill = freshness(item);
-  const barColor = fill > 0.5 ? colors.progressGood : fill > 0.2 ? colors.progressWarning : colors.progressOver;
+  const level = freshnessLevel(item.expiration_date);
+  // expired fills the bar in dark red instead of showing it empty
+  const fill = level === 'expired' ? 1 : freshness(item.expiration_date);
+  const barColor =
+    level === 'expired'
+      ? colors.danger
+      : level === 'bad'
+        ? colors.progressOver
+        : level === 'warning'
+          ? colors.progressWarning
+          : colors.progressGood;
 
   return (
     <Pressable
@@ -84,8 +87,25 @@ function PantryCard({ item }: { item: PantryItem }) {
 
       {/* TODO(Pantry): kcal once items link to foods */}
       <View style={{ width: '90%', alignSelf: 'center', gap: spacing.xs }}>
-        <Text style={[typography.caption, { color: colors.textMuted }]}>Kcal: –</Text>
-        <View style={{ height: 6, borderRadius: radii.pill, backgroundColor: colors.progressTrack, overflow: 'hidden' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Text style={[typography.caption, { color: colors.textMuted }]}>Kcal: –</Text>
+          {item.expiration_date ? (
+            <Text
+              style={[
+                typography.caption,
+                { color: level === 'expired' ? colors.danger : colors.textMuted, fontWeight: '600' },
+              ]}
+            >
+              {expiresInLabel(item.expiration_date)}
+            </Text>
+          ) : null}
+        </View>
+        <View
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={item.expiration_date ? `Expires: ${expiresInLabel(item.expiration_date)}` : 'No expiration date'}
+          style={{ height: 6, borderRadius: radii.pill, backgroundColor: colors.progressTrack, overflow: 'hidden' }}
+        >
           <View style={{ width: `${fill * 100}%`, height: '100%', borderRadius: radii.pill, backgroundColor: barColor }} />
         </View>
       </View>

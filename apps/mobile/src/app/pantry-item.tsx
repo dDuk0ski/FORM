@@ -314,6 +314,7 @@ function PantryItemForm({ item }: { item?: PantryItem }) {
               value={quantity}
               onChangeText={setQuantity}
               keyboardType="decimal-pad"
+              maxLength={6}
               accessibilityLabel="Quantity"
               selectTextOnFocus
               style={[typography.body, { flex: 1, textAlign: 'center', fontWeight: '700', color: colors.text }]}
@@ -361,6 +362,7 @@ function PantryItemForm({ item }: { item?: PantryItem }) {
               value={calories}
               onChangeText={setCalories}
               keyboardType="number-pad"
+              maxLength={4}
               placeholder="0"
               placeholderTextColor={colors.textMuted}
               accessibilityLabel="Calories per item"

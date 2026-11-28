@@ -46,6 +46,22 @@ export function daysUntil(date: string): number {
   return Math.ceil(ms / 86_400_000);
 }
 
+// how full the freshness bar is: days left out of 2 weeks, no date counts as fresh
+export function freshness(expirationDate: string | null): number {
+  if (!expirationDate) return 1;
+  return Math.min(1, Math.max(0, daysUntil(expirationDate) / 14));
+}
+
+// bar color: expired, 3 days or less is red, a week or less is yellow
+export function freshnessLevel(expirationDate: string | null): 'good' | 'warning' | 'bad' | 'expired' {
+  if (!expirationDate) return 'good';
+  const days = daysUntil(expirationDate);
+  if (days < 0) return 'expired';
+  if (days <= 3) return 'bad';
+  if (days <= 7) return 'warning';
+  return 'good';
+}
+
 // "Expired", "Today", "1 day", "12 days", "3 months", "2 years"
 export function expiresInLabel(date: string): string {
   const days = daysUntil(date);
