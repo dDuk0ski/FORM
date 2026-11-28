@@ -81,6 +81,10 @@ async def lookup_barcode(
     barcode: str,
     auth=Depends(get_current_user),
 ):
+    barcode = barcode.strip()
+    if len(barcode) == 12 and barcode.isdigit():
+         barcode = "0" + barcode
+
     """
     Look up a barcode in Supabase first.
     If it is not cached, retrieve it from Open Food Facts
@@ -145,7 +149,7 @@ async def lookup_barcode(
     brand = brands.split(",")[0].strip() if brands else None
 
     serving_g = numeric_value(product.get("serving_quantity"))
-    serving_label = product.get("quantity")
+    serving_label = product.get("serving_size")
 
     source_id = product.get("code") or barcode
     nutriments = product.get("nutriments") or {}
