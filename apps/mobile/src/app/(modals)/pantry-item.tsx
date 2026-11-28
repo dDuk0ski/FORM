@@ -92,6 +92,8 @@ function validate(values: FormValues): FormErrors {
   const quantity = Number(quantityText);
   if (quantityText === '' || !Number.isFinite(quantity) || quantity <= 0)
     errors.quantity = 'Enter a quantity greater than 0.';
+  else if (quantity > 9999) errors.quantity = 'Enter a quantity up to 9999.';
+  else if (!/^\d+(\.\d)?$/.test(quantityText)) errors.quantity = 'Use at most 1 decimal place.';
 
   if (values.unit.trim() === '') errors.unit = 'Unit is required.';
 

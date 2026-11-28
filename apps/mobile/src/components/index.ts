@@ -1,6 +1,7 @@
 export { Button } from './Button';
 export { Card } from './Card';
 export { NumberStepper } from './NumberStepper';
+export { OptionPills, type PillOption } from './OptionPills';
 export { Pill } from './Pill';
 export { ProgressBar } from './ProgressBar';
 export { Row } from './Row';

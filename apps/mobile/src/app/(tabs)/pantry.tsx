@@ -1,17 +1,37 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, Text } from 'react-native';
+import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Card, Row, Screen } from '@/components';
+import { Button, OptionPills, type PillOption } from '@/components';
 import { usePantry } from '@/hooks/usePantry';
 import { useTheme } from '@/theme';
+import type { PantryItem } from '@/types/pantry';
 
 // Pantry: what food the user has at home.
-// TODO(Pantry): list pantry_items (food name, quantity_g, display_unit,
-// expires_on, opened) from Supabase, soonest expiry first.
 // TODO(Pantry): add an item by food search or barcode, with quantity and
 // expiry date. Barcode lookup goes through the server (Open Food Facts, cached in `foods`).
 // TODO(Pantry, stretch goal): receipt scanning — upload to Supabase Storage, then
 // ml.parseReceipt (POST /receipt); confirm every item, flag confidence < 0.6.
+
+type Category = 'all' | 'produce' | 'protein' | 'dairy' | 'bakery';
+
+const CATEGORIES: PillOption<Category>[] = [
+  { value: 'all', label: 'All' },
+  { value: 'produce', label: 'Produce' },
+  { value: 'protein', label: 'Protein' },
+  { value: 'dairy', label: 'Dairy' },
+  { value: 'bakery', label: 'Bakery' },
+];
+
+// TODO(Pantry): real food images once items link to foods
+const CATEGORY_ICONS: Record<string, SFSymbol> = {
+  produce: 'carrot.fill',
+  protein: 'fish.fill',
+  dairy: 'cup.and.saucer.fill',
+  bakery: 'birthday.cake.fill',
+};
 
 // days from today until a "YYYY-MM-DD" date. negative means already expired
 function daysUntil(date: string): number {
@@ -19,64 +39,219 @@ function daysUntil(date: string): number {
   return Math.ceil(ms / 86_400_000);
 }
 
+// 1 decimal max, no trailing .0
+function trim(n: number): string {
+  return String(Math.round(n * 10) / 10);
+}
+
+// short label for the badge: 500g, 1.5kg, 750ml, 1.5L, 12 (pcs/pack show just the number)
+function formatAmount(quantity: number, unit: string): string {
+  const u = unit.trim().toLowerCase();
+  if (u === 'g' || u === 'gram' || u === 'grams') return quantity >= 1000 ? `${trim(quantity / 1000)}kg` : `${trim(quantity)}g`;
+  if (u === 'ml') return quantity >= 1000 ? `${trim(quantity / 1000)}L` : `${trim(quantity)}ml`;
+  return quantity >= 1000 ? `${trim(quantity / 1000)}k` : trim(quantity);
+}
+
+// TODO(Pantry): placeholder, bar shows days until expiry out of 2 weeks
+function freshness(item: PantryItem): number {
+  if (!item.expiration_date) return 1;
+  return Math.min(1, Math.max(0, daysUntil(item.expiration_date) / 14));
+}
+
+function PantryCard({ item }: { item: PantryItem }) {
+  const { colors, spacing, radii, typography } = useTheme();
+  const fill = freshness(item);
+  const barColor = fill > 0.5 ? colors.progressGood : fill > 0.2 ? colors.progressWarning : colors.progressOver;
+  const icon = CATEGORY_ICONS[item.category ?? ''] ?? 'basket.fill';
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Edit ${item.name}, ${item.quantity} ${item.unit}`}
+      onPress={() => router.push({ pathname: '/pantry-item', params: { id: item.id } })}
+      style={({ pressed }) => ({
+        flex: 1,
+        height: 170,
+        padding: spacing.md,
+        borderRadius: radii.xlSoft,
+        borderWidth: 1,
+        borderColor: colors.cardBorder,
+        backgroundColor: colors.surface,
+        shadowColor: colors.shadow,
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      {/* circle that stretches into a pill for longer labels */}
+      <View
+        style={{
+          alignSelf: 'flex-start',
+          minWidth: 32,
+          height: 32,
+          paddingHorizontal: spacing.sm,
+          borderRadius: radii.pill,
+          backgroundColor: colors.progressTrack,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={[typography.caption, { color: colors.text, fontWeight: '700' }]}>
+          {formatAmount(item.quantity, item.unit)}
+        </Text>
+      </View>
+
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xs }}>
+        <SymbolView name={icon} tintColor={colors.textMuted} size={36} />
+        <Text numberOfLines={1} style={[typography.label, { color: colors.text, fontWeight: '600' }]}>
+          {item.name}
+        </Text>
+      </View>
+
+      {/* TODO(Pantry): kcal once items link to foods */}
+      <View style={{ width: '90%', alignSelf: 'center', gap: spacing.xs }}>
+        <Text style={[typography.caption, { color: colors.textMuted }]}>Kcal: –</Text>
+        <View style={{ height: 6, borderRadius: radii.pill, backgroundColor: colors.progressTrack, overflow: 'hidden' }}>
+          <View style={{ width: `${fill * 100}%`, height: '100%', borderRadius: radii.pill, backgroundColor: barColor }} />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 export default function PantryScreen() {
-  const { colors, typography } = useTheme();
+  const { colors, spacing, radii, typography } = useTheme();
   const { data, isPending, error, refetch } = usePantry();
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<Category>('all');
 
   const addItem = () => router.push('/pantry-item');
 
+  const search = query.trim().toLowerCase();
+  const items = (data ?? []).filter(
+    (item) =>
+      (category === 'all' || item.category?.toLowerCase() === category) &&
+      (search === '' || item.name.toLowerCase().includes(search)),
+  );
+  const title = category === 'all' ? 'All items' : CATEGORIES.find((c) => c.value === category)?.label;
+
   return (
-    <Screen title="Pantry">
-      {isPending ? (
-        <ActivityIndicator accessibilityLabel="Loading pantry" />
-      ) : error ? (
-        <Card>
-          <Text style={[typography.body, { color: colors.danger }]}>{error.message}</Text>
-          <Button title="Retry" variant="secondary" onPress={() => refetch()} />
-        </Card>
-      ) : data.length === 0 ? (
-        <Card>
-          <Text style={[typography.heading, { color: colors.text }]}>Your pantry is empty</Text>
-          <Text style={[typography.body, { color: colors.textMuted }]}>
-            Add food from your pantry!
-          </Text>
-        </Card>
-      ) : (
-        data.map((item) => {
-          const days = item.expiration_date ? daysUntil(item.expiration_date) : null;
-          const expired = days !== null && days < 0;
-          const soon = days !== null && days >= 0 && days <= 3;
-          return (
-            <Pressable
-              key={item.id}
-              accessibilityRole="button"
-              accessibilityLabel={`Edit ${item.name}`}
-              onPress={() => router.push({ pathname: '/pantry-item', params: { id: item.id } })}
-            >
-              <Card>
-                <Row label={item.name} value={`${item.quantity} ${item.unit}`} />
-                  <Text
-                    style={[
-                      typography.caption,
-                      { color: expired ? colors.danger : soon ? colors.warning : colors.textMuted },
-                    ]}
-                  >
-                    {days === null
-                      ? 'No expiration date'
-                      : expired
-                        ? 'Expired'
-                        : days === 0
-                          ? 'Expires today'
-                          : days === 1
-                            ? 'Expires in 1 day'
-                            : `Expires in ${days} days`}
-                  </Text>
-              </Card>
-            </Pressable>
-          );
-        })
-      )}
-      <Button title="Add item" onPress={addItem} />
-    </Screen>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.headerPantry }}>
+      <Text
+        accessibilityRole="header"
+        style={[typography.heading, { color: colors.text, fontWeight: '600', textAlign: 'center', marginTop: spacing.sm }]}
+      >
+        Pantry
+      </Text>
+
+      {/* search + add */}
+      <View style={{ width: '90%', alignSelf: 'center', flexDirection: 'row', gap: 10, marginTop: spacing.xl }}>
+        <View
+          style={{
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            paddingHorizontal: spacing.lg,
+            borderRadius: radii.pill,
+            backgroundColor: colors.surface,
+          }}
+        >
+          <SymbolView name="magnifyingglass" tintColor={colors.textMuted} size={18} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search or add an item"
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel="Search pantry"
+            autoCorrect={false}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+            style={[typography.body, { flex: 1, color: colors.text, paddingVertical: spacing.md }]}
+          />
+        </View>
+        <Pressable
+          onPress={addItem}
+          accessibilityRole="button"
+          accessibilityLabel="Add item"
+          style={({ pressed }) => ({
+            width: 48,
+            height: 48,
+            borderRadius: radii.pill,
+            backgroundColor: colors.surface,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <SymbolView name="plus" tintColor={colors.text} size={20} />
+        </Pressable>
+      </View>
+
+      {/* categories, centered but scrolls if they don't fit */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0, marginTop: spacing.md }}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: '5%' }}
+      >
+        <OptionPills options={CATEGORIES} selected={category} onSelect={setCategory} accessibilityLabel="Category" />
+      </ScrollView>
+
+      {/* white sheet */}
+      <View
+        style={{
+          flex: 1,
+          marginTop: spacing.md,
+          backgroundColor: colors.surface,
+          borderTopLeftRadius: radii.sheet,
+          borderTopRightRadius: radii.sheet,
+          paddingTop: spacing.xl,
+        }}
+      >
+        <View
+          style={{
+            width: '90%',
+            alignSelf: 'center',
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginBottom: spacing.md,
+          }}
+        >
+          <Text style={[typography.body, { color: colors.text, fontWeight: '600' }]}>{title}</Text>
+          {data ? (
+            <Text style={[typography.label, { color: colors.textMuted, fontWeight: '600' }]}>
+              {items.length === 1 ? '1 item' : `${items.length} items`}
+            </Text>
+          ) : null}
+        </View>
+
+        {isPending ? (
+          <ActivityIndicator accessibilityLabel="Loading pantry" style={{ marginTop: spacing.xl }} />
+        ) : error ? (
+          <View style={{ width: '90%', alignSelf: 'center', gap: spacing.md }}>
+            <Text style={[typography.body, { color: colors.danger }]}>{error.message}</Text>
+            <Button title="Retry" variant="secondary" onPress={() => refetch()} />
+          </View>
+        ) : (
+          <FlatList
+            // odd count gets an empty spacer so the last card stays half width
+            data={items.length % 2 === 1 ? [...items, null] : items}
+            keyExtractor={(item) => item?.id ?? 'spacer'}
+            numColumns={2}
+            renderItem={({ item }) => (item ? <PantryCard item={item} /> : <View style={{ flex: 1 }} />)}
+            columnWrapperStyle={{ gap: 12 }}
+            contentContainerStyle={{ width: '90%', alignSelf: 'center', gap: 12, paddingBottom: spacing.xl }}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={
+              <Text style={[typography.body, { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl }]}>
+                {data.length === 0 ? 'Your pantry is empty. Tap + to add food!' : 'No items match'}
+              </Text>
+            }
+          />
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
