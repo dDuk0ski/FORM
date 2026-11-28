@@ -5,7 +5,7 @@ import { Keyboard, Platform, Pressable, Text, TextInput, View } from 'react-nati
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components';
-import { radii, spacing, typography, useTheme, withAlpha } from '@/theme';
+import { radii, spacing, typography, useTheme } from '@/theme';
 
 import { useResendCode, useVerifyEmail } from '@/hooks/useSession';
 
@@ -91,12 +91,12 @@ export default function VerifyEmailScreen() {
                 width: 56,
                 height: 56,
                 borderRadius: radii.lg,
-                backgroundColor: withAlpha(colors.primary, 0.15),
+                backgroundColor: colors.primarySoft,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <SymbolView name="envelope" tintColor={colors.primary} size={26} />
+              <SymbolView name="envelope" tintColor={colors.link} size={26} />
             </View>
 
             <Text accessibilityRole="header" style={[typography.title, { color: colors.text }]}>
@@ -129,7 +129,7 @@ export default function VerifyEmailScreen() {
                           borderColor: verify.isError
                             ? colors.danger
                             : active
-                              ? colors.primary
+                              ? colors.link
                               : colors.border,
                           borderRadius: radii.md,
                           alignItems: 'center',
@@ -184,7 +184,7 @@ export default function VerifyEmailScreen() {
                 <Text
                   accessibilityRole="button"
                   onPress={handleResend}
-                  style={{ fontWeight: '700', color: colors.primary }}
+                  style={{ fontWeight: '700', color: colors.link }}
                 >
                   Resend
                 </Text>
@@ -199,6 +199,7 @@ export default function VerifyEmailScreen() {
           <View style={{ gap: spacing.md, marginBottom: spacing.xs }}>
             <Button
               title="Verify"
+              variant="soft"
               onPress={handleVerify}
               disabled={code.length < CODE_LENGTH || verify.isPending}
             />

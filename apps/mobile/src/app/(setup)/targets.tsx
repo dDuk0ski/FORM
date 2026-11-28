@@ -169,7 +169,7 @@ export default function SetupTargetsScreen() {
                                     flex: 1,
                                     height: 4,
                                     borderRadius: radii.pill,
-                                    backgroundColor: index < CURRENT_STEP ? colors.primary : colors.border,
+                                    backgroundColor: index < CURRENT_STEP ? colors.link : colors.border,
                                 }}
                             />
                         ))}
@@ -306,15 +306,15 @@ export default function SetupTargetsScreen() {
                                             paddingVertical: spacing.md,
                                             borderRadius: radii.pill,
                                             borderWidth: 1,
-                                            borderColor: selected ? colors.primary : colors.border,
-                                            backgroundColor: selected ? colors.primary : undefined,
+                                            borderColor: selected ? colors.primarySoftBorder : colors.border,
+                                            backgroundColor: selected ? colors.primarySoft : undefined,
                                             alignItems: 'center',
                                         }}
                                     >
                                         <Text
                                             style={[
                                                 typography.label,
-                                                { fontWeight: '700', color: selected ? colors.onPrimary : colors.text },
+                                                { fontWeight: '700', color: selected ? colors.onPrimarySoft : colors.text },
                                             ]}
                                         >
                                             {option.label}
@@ -455,6 +455,7 @@ export default function SetupTargetsScreen() {
                     ) : null}
                     <Button
                         title="Continue"
+                        variant="soft"
                         onPress={handleContinue}
                         disabled={saveStep.isPending || completeOnboarding.isPending}
                     />

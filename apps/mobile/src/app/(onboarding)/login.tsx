@@ -131,16 +131,16 @@ export default function LoginScreen() {
     };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.primary }}>
-      <StatusBar style="light" />
+    <View style={{ flex: 1, backgroundColor: colors.primarySoft }}>
+      <StatusBar style="dark" />
 
       {/* top: header */}
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.xs }}>
-          <Text accessibilityRole="header" style={[typography.title, { color: colors.onPrimary }]}>
+          <Text accessibilityRole="header" style={[typography.title, { color: colors.onPrimarySoft }]}>
             Log in
           </Text>
-          <Text style={[typography.lead, { color: withAlpha(colors.onPrimary, 0.85) }]}>
+          <Text style={[typography.lead, { color: withAlpha(colors.onPrimarySoft, 0.7) }]}>
             Welcome back to FORM.
           </Text>
         </View>
@@ -170,7 +170,7 @@ export default function LoginScreen() {
           }}
         >
           <View style={{ width: '90%', alignSelf: 'center', gap: spacing.lg }}>
-            <Button title="Continue with Google" variant="secondary" onPress={() => {}} />
+            <Button title="Continue with Google" variant="softOutline" onPress={() => {}} />
 
             {/* horizontal break */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
@@ -216,7 +216,7 @@ export default function LoginScreen() {
               />
             </View>
 
-            <Button title="Log In" onPress={handleSubmit} disabled={signIn.isPending} />
+            <Button title="Log In" variant="soft" onPress={handleSubmit} disabled={signIn.isPending} />
 
             {signIn.isError ? (
               <Text
@@ -232,7 +232,7 @@ export default function LoginScreen() {
               <Text
                 accessibilityRole="link"
                 onPress={() => router.replace('/signup')}
-                style={{ color: colors.primary, fontWeight: '600' }}
+                style={{ color: colors.link, fontWeight: '600' }}
               >
                 Sign up
               </Text>
