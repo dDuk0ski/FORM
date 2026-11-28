@@ -3,26 +3,63 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 
-import { useTheme } from '@/theme';
+import { useOnboardingStatus } from '@/hooks/useOnboarding';
+
+import { useSession } from '@/hooks/useSession';
+import { radii, useTheme } from '@/theme';
+
+function RootNavigator() {
+  const { colors } = useTheme();
+  const { data: session, isPending: sessionPending } = useSession();
+  const { data: isOnboarded, isPending: onboardingPending } = useOnboardingStatus(session?.user.id);
+  const isSignedIn = session != null;
+
+  // wait for both lookups, otherwise a returning user could see the wrong group for a frame
+  // (onboarding only loads once someone is signed in)
+  if (sessionPending || (isSignedIn && onboardingPending)) return null;
+
+  const isOnboardedFlag = isOnboarded === true;
+  const needsSetup = isSignedIn && !isOnboardedFlag;
+  const isReady = isSignedIn && isOnboardedFlag;
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Stack.Protected guard={isReady}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
+        <Stack.Screen
+          name="pantry-item"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: 'fitToContents',
+            sheetGrabberVisible: true,
+            sheetCornerRadius: radii.sheet,
+            contentStyle: { backgroundColor: colors.surface },
+          }}
+        />
+      </Stack.Protected>
+      <Stack.Protected guard={needsSetup}>
+        <Stack.Screen name="(setup)" />
+      </Stack.Protected>
+      <Stack.Protected guard={!isSignedIn}>
+        <Stack.Screen name="(onboarding)" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
-  const { colors } = useTheme();
   const [queryClient] = useState(() => new QueryClient());
 
-  // TODO(auth): gate on the Supabase session from @/api/supabase and send
-  // signed-out users to the sign-in flow. Not part of the boilerplate.
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar style="auto" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      >
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
-      </Stack>
+      <RootNavigator />
     </QueryClientProvider>
   );
 }

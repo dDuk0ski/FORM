@@ -1,10 +1,12 @@
 export { Button } from './Button';
 export { Card } from './Card';
 export { NumberStepper } from './NumberStepper';
+export { OptionPills, type PillOption } from './OptionPills';
 export { Pill } from './Pill';
 export { ProgressBar } from './ProgressBar';
 export { Row } from './Row';
 export { Screen } from './Screen';
+export { SegmentedPill } from './SegmentedPill';
 export { SearchInput } from './SearchInput';
 export { EmptyState, ErrorState, LoadingState } from './StateViews';
 export { StatTile } from './StatTile';

@@ -1,5 +1,14 @@
 import { fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 
+import { auth } from '@/api/auth';
+import { onboarding } from '@/api/onboarding';
+
+// The root layout only shows the tabs to a signed-in, onboarded user, so start as one.
+beforeEach(() => {
+  jest.spyOn(auth, 'getSession').mockResolvedValue({ user: { id: 'u1', email: 'test@example.com' } });
+  jest.spyOn(onboarding, 'isComplete').mockResolvedValue(true);
+});
+
 // On main, Today's "Log food" button is the entry point to food logging. It opens the Log
 // food modal with the search, the Nutrition card and the Logged today list. (The PR #5 Meal
 // quick action test is deferred until that PR merges.)

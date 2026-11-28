@@ -81,6 +81,16 @@ const dark: ColorTokens = {
 
 export const colors = { light, dark };
 
+/** A token at reduced opacity, for tinted icon wells, ring tracks and chips. */
+export function withAlpha(hex: string, alpha: number): string {
+  return (
+    hex +
+    Math.round(alpha * 255)
+      .toString(16)
+      .padStart(2, '0')
+  );
+}
+
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -94,6 +104,7 @@ export const radii = {
   sm: 6,
   md: 10,
   lg: 16,
+  xl: 22,
   /** 24: the Figma food card radius (named apart from PR #5's `xl: 22`). */
   xlSoft: 24,
   /** 32: top corners of the food modals' sheet. */
@@ -108,6 +119,8 @@ export const typography = {
   label: { fontSize: 14, lineHeight: 18, fontWeight: '500' },
   caption: { fontSize: 12, lineHeight: 16, fontWeight: '400' },
   number: { fontSize: 32, lineHeight: 38, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  lead: { fontSize: 17, lineHeight: 24, fontWeight: '500' },
+  eyebrow: { fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 0.6 },
 } satisfies Record<string, TextStyle>;
 
 export type Theme = {
