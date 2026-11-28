@@ -5,8 +5,9 @@ import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, TextInput, Vi
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, OptionPills, type PillOption } from '@/components';
+import { useFood } from '@/hooks/useFoodSearch';
 import { usePantry } from '@/hooks/usePantry';
-import { categoryIcon, expiresInLabel, formatAmount, freshness, freshnessLevel } from '@/lib/pantry';
+import { categoryIcon, expiresInLabel, formatAmount, freshness, freshnessLevel, servingKcal } from '@/lib/pantry';
 import { useTheme } from '@/theme';
 import type { PantryItem } from '@/types/pantry';
 
@@ -29,6 +30,8 @@ const CATEGORIES: PillOption<Category>[] = [
 function PantryCard({ item }: { item: PantryItem }) {
   const { colors, spacing, radii, typography } = useTheme();
   const level = freshnessLevel(item.expiration_date);
+  const food = useFood(item.food_id ?? undefined);
+  const kcal = food.data ? servingKcal(food.data) : null;
   // expired fills the bar in dark red instead of showing it empty
   const fill = level === 'expired' ? 1 : freshness(item.expiration_date);
   const barColor =
@@ -85,10 +88,9 @@ function PantryCard({ item }: { item: PantryItem }) {
         </Text>
       </View>
 
-      {/* TODO(Pantry): kcal once items link to foods */}
       <View style={{ width: '90%', alignSelf: 'center', gap: spacing.xs }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text style={[typography.caption, { color: colors.textMuted }]}>Kcal: –</Text>
+          <Text style={[typography.caption, { color: colors.textMuted }]}>{`Kcal: ${kcal?.kcal ?? '–'}`}</Text>
           {item.expiration_date ? (
             <Text
               style={[

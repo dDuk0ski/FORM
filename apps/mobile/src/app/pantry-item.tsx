@@ -5,6 +5,8 @@ import { SymbolView } from 'expo-symbols';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Button, OptionPills, SegmentedPill, type PillOption } from '@/components';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useFood, useFoodSearch } from '@/hooks/useFoodSearch';
 import {
   useAddPantryItem,
   usePantry,
@@ -16,11 +18,13 @@ import {
   expiresInLabel,
   formatAmount,
   gramsFor,
+  servingKcal,
   toPantryUnit,
   type PantryCategory,
   type PantryUnit,
 } from '@/lib/pantry';
 import { useTheme, withAlpha } from '@/theme';
+import type { Food } from '@/types/food';
 import type { PantryItem } from '@/types/pantry';
 import type { IsoDate } from '@/types/api';
 
@@ -111,6 +115,9 @@ function ErrorText({ children }: { children?: string }) {
 function PantryItemForm({ item }: { item?: PantryItem }) {
   const { colors, spacing, radii, typography } = useTheme();
   const [name, setName] = useState(item?.name ?? '');
+  const [nameFocused, setNameFocused] = useState(false);
+  const [foodId, setFoodId] = useState<string | null>(item?.food_id ?? null);
+  const [pickedFood, setPickedFood] = useState<Food | null>(null);
   const [category, setCategory] = useState<PantryCategory | null>(
     (item?.category as PantryCategory | null) ?? null,
   );
@@ -134,6 +141,35 @@ function PantryItemForm({ item }: { item?: PantryItem }) {
   const allErrors = validate({ name, quantity, unit, calories });
   const errors = showErrors ? allErrors : {};
   const amount = allErrors.quantity || unit === null ? null : formatAmount(toNumber(quantity), unit);
+
+  // linked food: the one just picked, or the one already saved on this item
+  const savedFood = useFood(pickedFood ? undefined : (foodId ?? undefined));
+  const linkedFood = pickedFood ?? savedFood.data ?? null;
+  const found = linkedFood ? servingKcal(linkedFood) : null;
+
+  // suggestions while typing a name that isn't linked yet
+  const debouncedName = useDebouncedValue(name, 250);
+  const showSuggestions = nameFocused && foodId === null;
+  const search = useFoodSearch(showSuggestions ? debouncedName : '');
+  const suggestions = showSuggestions ? (search.data ?? []).slice(0, 4) : [];
+
+  const changeName = (text: string) => {
+    setName(text);
+    // typing over a linked name unlinks it
+    if (foodId !== null) {
+      setFoodId(null);
+      setPickedFood(null);
+    }
+  };
+
+  const pickFood = (food: Food) => {
+    setName(food.name);
+    setFoodId(food.id);
+    setPickedFood(food);
+    const kcal = servingKcal(food);
+    if (calories.trim() === '' && kcal) setCalories(String(kcal.kcal));
+    Keyboard.dismiss();
+  };
 
   const stepQuantity = (sign: -1 | 1) => {
     const current = Number.isFinite(toNumber(quantity)) ? toNumber(quantity) : 0;
@@ -178,7 +214,8 @@ function PantryItemForm({ item }: { item?: PantryItem }) {
       name: name.trim(),
       quantity: qty,
       unit,
-      grams: gramsFor(qty, unit),
+      grams: gramsFor(qty, unit, linkedFood?.servings[0]?.grams ?? null),
+      food_id: foodId,
       category,
       expiration_date: expirationDate === '' ? null : (expirationDate as IsoDate),
     };
@@ -238,12 +275,14 @@ function PantryItemForm({ item }: { item?: PantryItem }) {
       ) : null}
 
       {/* name */}
-      {/* TODO(Pantry): "Found it" text, once names match foods */}
       <View style={{ gap: spacing.xs }}>
         <Label>Name</Label>
         <TextInput
           value={name}
-          onChangeText={setName}
+          onChangeText={changeName}
+          onFocus={() => setNameFocused(true)}
+          onBlur={() => setNameFocused(false)}
+          autoCorrect={false}
           placeholder="ex. Greek yogurt"
           placeholderTextColor={colors.textMuted}
           accessibilityLabel="Name"
@@ -260,6 +299,66 @@ function PantryItemForm({ item }: { item?: PantryItem }) {
           ]}
         />
         <ErrorText>{errors.name}</ErrorText>
+
+        {suggestions.length > 0 ? (
+          <View style={[fieldStyle, { overflow: 'hidden' }]}>
+            {suggestions.map((food, index) => {
+              const kcal = servingKcal(food);
+              return (
+                <Pressable
+                  key={food.id}
+                  onPress={() => pickFood(food)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use ${food.name}`}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.sm,
+                    paddingHorizontal: spacing.lg,
+                    paddingVertical: spacing.md,
+                    borderTopWidth: index === 0 ? 0 : 1,
+                    borderTopColor: colors.cardBorder,
+                    backgroundColor: pressed ? colors.surfaceMuted : colors.surface,
+                  })}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={1} style={[typography.label, { color: colors.text, fontWeight: '600' }]}>
+                      {food.name}
+                    </Text>
+                    {food.brand ? (
+                      <Text numberOfLines={1} style={[typography.caption, { color: colors.textMuted }]}>
+                        {food.brand}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {kcal ? (
+                    <Text style={[typography.caption, { color: colors.textMuted }]}>{`${kcal.kcal} kcal`}</Text>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {found ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            <View
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: radii.pill,
+                backgroundColor: withAlpha(colors.success, 0.15),
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <SymbolView name="checkmark" tintColor={colors.success} size={10} weight="bold" />
+            </View>
+            <Text style={[typography.caption, { color: colors.success, fontWeight: '600' }]}>
+              {`Found it · ${found.kcal} kcal per ${found.per}`}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {/* category */}
@@ -363,7 +462,7 @@ function PantryItemForm({ item }: { item?: PantryItem }) {
               onChangeText={setCalories}
               keyboardType="number-pad"
               maxLength={4}
-              placeholder="0"
+              placeholder={found ? String(found.kcal) : '0'}
               placeholderTextColor={colors.textMuted}
               accessibilityLabel="Calories per item"
               style={[typography.body, { flex: 1, fontWeight: '700', color: colors.text }]}

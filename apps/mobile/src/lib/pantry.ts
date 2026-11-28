@@ -1,5 +1,7 @@
 import type { SFSymbol } from 'expo-symbols';
 
+import type { Food } from '@/types/food';
+
 export type PantryUnit = 'pcs' | 'g' | 'ml' | 'pack';
 export type PantryCategory = 'produce' | 'protein' | 'dairy' | 'bakery' | 'other';
 
@@ -22,9 +24,19 @@ export function toPantryUnit(unit: string): PantryUnit | null {
   return UNITS.includes(unit as PantryUnit) ? (unit as PantryUnit) : null;
 }
 
-// recipes only use grams. ml counts as ~1g, pcs/pack stay null until linked to a food
-export function gramsFor(quantity: number, unit: PantryUnit): number | null {
-  return unit === 'g' || unit === 'ml' ? quantity : null;
+// recipes only use grams. ml counts as ~1g, pcs/pack need a linked food's serving size
+export function gramsFor(quantity: number, unit: PantryUnit, servingGrams: number | null = null): number | null {
+  if (unit === 'g' || unit === 'ml') return quantity;
+  return servingGrams ? Math.round(quantity * servingGrams * 10) / 10 : null;
+}
+
+// kcal for one serving of a food, or per 100 g if it has no serving. null if kcal is unknown
+export function servingKcal(food: Food): { kcal: number; per: string } | null {
+  const per100 = food.macros_per_100g.kcal;
+  if (per100 === null) return null;
+  const serving = food.servings[0];
+  if (!serving) return { kcal: Math.round(per100), per: '100 g' };
+  return { kcal: Math.round((per100 * serving.grams) / 100), per: serving.label };
 }
 
 // 1 decimal max, no trailing .0
