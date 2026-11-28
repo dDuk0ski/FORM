@@ -494,7 +494,7 @@ def get_today(
             )
 
     if not food_entries:
-        log_quality = 1.0
+        log_quality = 0.0
     else:
         log_quality = (
             entries_with_kcal / len(food_entries)
