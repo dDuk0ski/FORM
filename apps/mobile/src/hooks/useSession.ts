@@ -42,7 +42,11 @@ export function useSignOut() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: () => auth.signOut(),
-        onSuccess: () => queryClient.setQueryData(SESSION_KEY, null),
+        // drop everything cached for this user so the next sign in starts clean
+        onSuccess: () => {
+            queryClient.clear();
+            queryClient.setQueryData(SESSION_KEY, null);
+        },
     });
 }
 
