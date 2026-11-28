@@ -1,16 +1,51 @@
-
+import argparse
 import csv
+import os
 from decimal import Decimal
 from pathlib import Path
 
 import psycopg
 
-DATABASE_URL = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+LOCAL_DATABASE_URL = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 
-USDA_DIR = Path(
-    r"C:\Users\stnwi\OneDrive\Desktop"
-    r"\FoodData_Central_sr_legacy_food_csv_2018-04"
-)
+USDA_DIR = None
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Import USDA SR Legacy food data into FORM."
+    )
+
+    parser.add_argument(
+        "usda_dir",
+        type=Path,
+        help="Path to the unzipped USDA SR Legacy CSV folder.",
+    )
+
+    args = parser.parse_args()
+
+    if not args.usda_dir.is_dir():
+        parser.error(f"Directory does not exist: {args.usda_dir}")
+
+    required_files = [
+        "food.csv",
+        "food_nutrient.csv",
+        "nutrient.csv",
+        "food_portion.csv",
+        "measure_unit.csv",
+    ]
+
+    missing_files = [
+        filename
+        for filename in required_files
+        if not (args.usda_dir / filename).is_file()
+    ]
+
+    if missing_files:
+        parser.error(
+            f"Missing required CSV files: {', '.join(missing_files)}"
+        )
+
+    return args
 
 # Existing FORM nutrients: USDA ID -> FORM code.
 CORE_NUTRIENTS = {
@@ -104,7 +139,7 @@ def import_foods(conn):
                 row["description"].strip(),
                 "usda",
                 row["fdc_id"],
-                "standard",
+                "reference",
             )
             for row in reader
         ]
@@ -454,7 +489,20 @@ def verify_import(conn):
 
 
 def main():
-    with psycopg.connect(DATABASE_URL) as conn:
+    global USDA_DIR
+
+    args = parse_args()
+    USDA_DIR = args.usda_dir
+
+    database_url = os.environ.get(
+        "DATABASE_URL",
+        LOCAL_DATABASE_URL,
+    )
+
+    print(f"USDA directory: {USDA_DIR}")
+    print("Connecting to database...")
+
+    with psycopg.connect(database_url) as conn:
         import_measure_units(conn)
         import_foods(conn)
         import_nutrients(conn)
