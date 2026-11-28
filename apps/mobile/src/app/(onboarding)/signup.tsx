@@ -194,16 +194,16 @@ export default function SignUpScreen() {
     };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.primary }}>
-      <StatusBar style="light" />
+    <View style={{ flex: 1, backgroundColor: colors.primarySoft }}>
+      <StatusBar style="dark" />
 
       {/* top: header */}
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.xs }}>
-          <Text accessibilityRole="header" style={[typography.title, { color: colors.onPrimary }]}>
+          <Text accessibilityRole="header" style={[typography.title, { color: colors.onPrimarySoft }]}>
             Create account
           </Text>
-          <Text style={[typography.lead, { color: withAlpha(colors.onPrimary, 0.85) }]}>
+          <Text style={[typography.lead, { color: withAlpha(colors.onPrimarySoft, 0.7) }]}>
             Sign up to track food, workouts, and goals.
           </Text>
         </View>
@@ -233,7 +233,7 @@ export default function SignUpScreen() {
           }}
         >
           <View style={{ width: '90%', alignSelf: 'center', gap: spacing.lg }}>
-            <Button title="Continue with Google" variant="secondary" onPress={() => {}} />
+            <Button title="Continue with Google" variant="softOutline" onPress={() => {}} />
 
             {/* horizontal break */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
@@ -286,7 +286,7 @@ export default function SignUpScreen() {
               ))}
             </View>
 
-            <Button title="Create Account" onPress={handleSubmit} disabled={signUp.isPending} />
+            <Button title="Create Account" variant="soft" onPress={handleSubmit} disabled={signUp.isPending} />
 
             {signUp.isError ? (
               <Text
@@ -301,8 +301,8 @@ export default function SignUpScreen() {
               Already have an account?{' '}
               <Text
                 accessibilityRole="link"
-                onPress={() => {}}
-                style={{ color: colors.primary, fontWeight: '600' }}
+                onPress={() => router.replace('/login')}
+                style={{ color: colors.link, fontWeight: '600' }}
               >
                 Log in
               </Text>

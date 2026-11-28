@@ -118,7 +118,7 @@ export default function SetupBodyStatsScreen() {
                                     flex: 1,
                                     height: 4,
                                     borderRadius: radii.pill,
-                                    backgroundColor: index < CURRENT_STEP ? colors.primary : colors.border,
+                                    backgroundColor: index < CURRENT_STEP ? colors.link : colors.border,
                                 }}
                             />
                         ))}
@@ -286,8 +286,8 @@ export default function SetupBodyStatsScreen() {
                                             padding: spacing.md,
                                             borderRadius: radii.lg,
                                             borderWidth: 1.5,
-                                            borderColor: selected ? colors.textMuted : colors.border,
-                                            backgroundColor: colors.surface,
+                                            borderColor: selected ? colors.primarySoftBorder : colors.border,
+                                            backgroundColor: selected ? colors.primarySoft : colors.surface,
                                         }}
                                     >
                                         <Text style={[typography.label, { color: colors.text, fontWeight: '700' }]}>
@@ -313,7 +313,7 @@ export default function SetupBodyStatsScreen() {
                             {saveStep.error.message}
                         </Text>
                     ) : null}
-                    <Button title="Continue" onPress={handleContinue} disabled={saveStep.isPending} />
+                    <Button title="Continue" variant="soft" onPress={handleContinue} disabled={saveStep.isPending} />
                 </View>
             </ScrollView>
         </SafeAreaView>

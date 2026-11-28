@@ -3,7 +3,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router';
 
 import { Button } from '@/components';
-import { radii, spacing, typography, useTheme, withAlpha } from '@/theme';
+import { radii, spacing, typography, useTheme } from '@/theme';
 
 // Welcome: first screen of onboarding.
 // TODO(onboarding): replace the placeholder circle with the final design.
@@ -31,7 +31,7 @@ export default function WelcomeScreen() {
                 width: 160,
                 height: 160,
                 borderRadius: radii.pill,
-                backgroundColor: withAlpha(colors.primary, 0.15),
+                backgroundColor: colors.border,
                 }}
             />
             </View>
@@ -53,8 +53,8 @@ export default function WelcomeScreen() {
             }}
         >
             <View style={{ width: '90%', alignSelf: 'center', gap: spacing.md }}>
-            <Button title="Create Account" onPress={() => router.push('/signup')} />
-            <Button title="Login" variant="secondary" onPress={() => {}} />
+            <Button title="Create Account" variant="soft" onPress={() => router.push('/signup')} />
+            <Button title="Login" variant="softOutline" onPress={() => router.push('/login')} />
             </View>
         </View>
         </View>

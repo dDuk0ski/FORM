@@ -141,7 +141,7 @@ export default function SetupProfileScreen() {
                   flex: 1,
                   height: 4,
                   borderRadius: radii.pill,
-                  backgroundColor: index < CURRENT_STEP ? colors.primary : colors.border,
+                  backgroundColor: index < CURRENT_STEP ? colors.link : colors.border,
                 }}
               />
             ))}
@@ -206,7 +206,7 @@ export default function SetupProfileScreen() {
             <Text
               accessibilityRole="button"
               onPress={handleUploadPhoto}
-              style={[typography.label, { color: colors.primary, fontWeight: '600' }]}
+              style={[typography.label, { color: colors.link, fontWeight: '600' }]}
             >
               Upload photo
             </Text>
@@ -284,7 +284,7 @@ export default function SetupProfileScreen() {
                                   Birthdate
                               </Text>
                               <Pressable onPress={confirmDate} accessibilityRole="button" hitSlop={12}>
-                                  <Text style={[typography.body, { color: colors.primary, fontWeight: '600' }]}>Done</Text>
+                                  <Text style={[typography.body, { color: colors.link, fontWeight: '600' }]}>Done</Text>
                               </Pressable>
                           </View>
 
@@ -295,7 +295,7 @@ export default function SetupProfileScreen() {
                               minimumDate={MIN_BIRTHDATE}
                               maximumDate={new Date()}
                               themeVariant={scheme}
-                              accentColor={colors.primary}
+                              accentColor={colors.link}
                               onValueChange={(_, selectedDate) => {
                                   if (selectedDate) setDraftDate(selectedDate);
                               }}
@@ -320,15 +320,15 @@ export default function SetupProfileScreen() {
                         paddingVertical: spacing.md,
                         borderRadius: radii.pill,
                         borderWidth: 1,
-                        borderColor: selected ? colors.primary : colors.border,
-                        backgroundColor: selected ? colors.primary : undefined,
+                        borderColor: selected ? colors.primarySoftBorder : colors.border,
+                        backgroundColor: selected ? colors.primarySoft : undefined,
                         alignItems: 'center',
                       }}
                     >
                       <Text
                         style={[
                           typography.label,
-                          { fontWeight: '700', color: selected ? colors.onPrimary : colors.text },
+                          { fontWeight: '700', color: selected ? colors.onPrimarySoft : colors.text },
                         ]}
                       >
                         {option.label}
@@ -356,7 +356,7 @@ export default function SetupProfileScreen() {
               {saveStep.error.message}
             </Text>
           ) : null}
-          <Button title="Continue" onPress={handleContinue} disabled={saveStep.isPending} />
+          <Button title="Continue" variant="soft" onPress={handleContinue} disabled={saveStep.isPending} />
         </View>
       </ScrollView>
     </SafeAreaView>
