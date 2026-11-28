@@ -120,6 +120,7 @@ export const typography = {
   caption: { fontSize: 12, lineHeight: 16, fontWeight: '400' },
   number: { fontSize: 32, lineHeight: 38, fontWeight: '700', fontVariant: ['tabular-nums'] },
   lead: { fontSize: 17, lineHeight: 24, fontWeight: '500' },
+  eyebrow: { fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 0.6 },
 } satisfies Record<string, TextStyle>;
 
 export type Theme = {
