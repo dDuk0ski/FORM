@@ -301,7 +301,7 @@ export default function SignUpScreen() {
               Already have an account?{' '}
               <Text
                 accessibilityRole="link"
-                onPress={() => {}}
+                onPress={() => router.replace('/login')}
                 style={{ color: colors.primary, fontWeight: '600' }}
               >
                 Log in

@@ -54,7 +54,7 @@ export default function WelcomeScreen() {
         >
             <View style={{ width: '90%', alignSelf: 'center', gap: spacing.md }}>
             <Button title="Create Account" onPress={() => router.push('/signup')} />
-            <Button title="Login" variant="secondary" onPress={() => {}} />
+            <Button title="Login" variant="secondary" onPress={() => router.push('/login')} />
             </View>
         </View>
         </View>
